@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PutCommand } from '@aws-sdk/lib-dynamodb';
-import { doc, tables } from '@/lib/aws';
 import bcrypt from 'bcryptjs';
+import { putUser, getUserByEmail } from '@/lib/userStore';
+
+// (optional) explizit machen, dass diese Route im Node-Runtime läuft
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
     try {
@@ -15,12 +17,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
         }
 
-        // Hash des Passworts erzeugen
+        // Prüfen, ob User bereits existiert (funktioniert in local & aws)
+        const existing = await getUserByEmail(email);
+        if (existing) {
+            return NextResponse.json({ error: 'user_exists' }, { status: 409 });
+        }
+
+        // Passwort hashen
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // DynamoDB erwartet als Partition Key den Namen "UserID"
+        // Einheitliches User-Objekt (AWS-kompatibel: PK = UserID)
         const userItem = {
-            UserID: email,           // Wichtig: Feldname exakt wie in DynamoDB
+            UserID: email,                 // Primärschlüssel (DynamoDB-kompatibel)
             Name: name,
             Email: email,
             Password: hashedPassword,
@@ -29,15 +37,13 @@ export async function POST(req: NextRequest) {
             CreatedAt: new Date().toISOString(),
         };
 
-        // Speichern in DynamoDB
-        await doc.send(new PutCommand({
-            TableName: tables.users,
-            Item: userItem,
-        }));
+        // Speichern – wird im local-Mode in .data/users.json geschrieben,
+        // im aws-Mode in die DynamoDB-Tabelle (tables.users)
+        await putUser(userItem);
 
-        console.log('✅ Neuer Benutzer erfolgreich registriert:', email);
+        console.log('✅ Neuer Benutzer registriert:', email);
 
-        // Nach erfolgreicher Registrierung weiterleiten zum Login
+        // Weiterleitung zum Login
         return NextResponse.redirect(new URL('/login', req.url));
     } catch (err: any) {
         console.error('❌ Registrierung fehlgeschlagen:', err);
@@ -48,8 +54,7 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// Blockiere direkte GET-Aufrufe (z. B. durch Browser)
+// Direkte GET-Aufrufe blocken
 export function GET() {
     return NextResponse.json({ error: 'method_not_allowed' }, { status: 405 });
 }
-

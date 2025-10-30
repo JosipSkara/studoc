@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { doc, tables } from '@/lib/aws';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { getUserByEmail } from '@/lib/userStore';
+
+export const runtime = 'nodejs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
 
@@ -16,22 +17,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
         }
 
-        // Robust: finde den User per Scan – egal ob PK UserID/userId ist oder Email als Attribut existiert
-        const scan = await doc.send(new ScanCommand({
-            TableName: tables.users,
-            FilterExpression:
-                '#uid = :e OR #uid2 = :e OR #em = :e OR #em2 = :e',
-            ExpressionAttributeNames: {
-                '#uid': 'UserID',
-                '#uid2': 'userId',
-                '#em': 'Email',
-                '#em2': 'email',
-            },
-            ExpressionAttributeValues: { ':e': email },
-            Limit: 1,
-        }));
-
-        const user = scan.Items?.[0] as any;
+        // User aus Store holen (local -> .data/users.json, aws -> DynamoDB)
+        const user = await getUserByEmail(email);
         if (!user) {
             return NextResponse.json({ error: 'not_found' }, { status: 404 });
         }
@@ -46,15 +33,27 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'wrong_password' }, { status: 401 });
         }
 
-        const sub    = user.UserID ?? user.userId ?? email;
-        const mail   = user.Email  ?? user.email  ?? email;
         const roles  = user.Roles  ?? user.roles  ?? [];
         const groups = user.Groups ?? user.groups ?? ['default'];
 
-        const token = jwt.sign({ sub, email: mail, roles, groups }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign(
+            {
+                sub: user.UserID ?? user.userId ?? email,
+                email: user.Email ?? user.email ?? email,
+                roles,
+                groups,
+            },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
 
         const resp = NextResponse.redirect(new URL('/dashboard', req.url));
-        resp.cookies.set('token', token, { httpOnly: true, sameSite: 'lax', path: '/' });
+        resp.cookies.set('token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+        });
         return resp;
     } catch (err: any) {
         console.error('Login failed:', err);
