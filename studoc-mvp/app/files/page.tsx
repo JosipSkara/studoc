@@ -1,35 +1,77 @@
-
 'use client';
 import { useEffect, useState } from 'react';
 
-type FileItem = { fileId:string; filename:string; groupId:string; tags:string[]; key:string; size:number };
+type FileEntry = {
+    filename: string;
+    key: string;
+    size: number;
+    lastModified?: string;
+};
+
+type GroupData = Record<string, Record<string, FileEntry[]>>;
 
 export default function FilesPage() {
-  const [q, setQ] = useState('');
-  const [items, setItems] = useState<FileItem[]>([]);
+    const [q, setQ] = useState('');
+    const [groups, setGroups] = useState<GroupData>({});
+    const [loading, setLoading] = useState(true);
 
-  useEffect(()=>{ (async ()=>{
-    const res = await fetch('/api/files/list?q=' + encodeURIComponent(q));
-    const data = await res.json();
-    setItems(data.items || []);
-  })(); }, [q]);
+    useEffect(() => {
+        (async () => {
+            setLoading(true);
+            const res = await fetch('/api/files/list?q=' + encodeURIComponent(q));
+            const data = await res.json();
+            setGroups(data.groups || {});
+            setLoading(false);
+        })();
+    }, [q]);
 
-  return (
-    <div className="card">
-      <h1>Files</h1>
-      <input placeholder="Suche (Dateiname, Tag)" value={q} onChange={e=>setQ(e.target.value)} />
-      <div className="grid" style={{marginTop:12}}>
-        {items.map(it => (
-          <div className="card" key={it.fileId}>
-            <b>{it.filename}</b>
-            <div className="row"><span className="tag">Gruppe: {it.groupId}</span><span className="tag">{Math.round(it.size/1024)} KB</span></div>
-            <div className="row" style={{marginTop:8, gap:8}}>{it.tags?.map(t => <span className="tag" key={t}>{t}</span>)}</div>
-            <form action={`/api/files/download?key=${encodeURIComponent(it.key)}`} method="get" style={{marginTop:8}}>
-              <button>Download</button>
-            </form>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+    if (loading) return <p>🔄 Lade Dateien...</p>;
+
+    return (
+        <div className="card">
+            <h1>📁 Dateien nach Gruppen</h1>
+            <input
+                placeholder="Suche nach Dateinamen"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="input"
+            />
+
+            {Object.keys(groups).length === 0 ? (
+                <p style={{ marginTop: 20 }}>Keine Dateien gefunden.</p>
+            ) : (
+                Object.entries(groups).map(([groupId, users]) => (
+                    <div key={groupId} className="card" style={{ marginTop: 20 }}>
+                        <h2>📂 Gruppe: {groupId}</h2>
+
+                        {Object.entries(users).map(([userEmail, files]) => (
+                            <div key={userEmail} style={{ marginLeft: 20, marginTop: 12 }}>
+                                <h3>👤 {userEmail}</h3>
+                                <ul style={{ marginLeft: 20 }}>
+                                    {files.map((f) => (
+                                        <li key={f.key} style={{ marginBottom: 6 }}>
+                                            <a
+                                                href={`https://${process.env.NEXT_PUBLIC_STUDOC_BUCKET || 'studoc-stodjo-30.10.2025'}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${f.key}`}
+                                                target="_blank"
+                                                className="text-blue-500 underline"
+                                            >
+                                                {f.filename}
+                                            </a>{' '}
+                                            <small>
+                                                ({(f.size / 1024).toFixed(1)} KB •{' '}
+                                                {f.lastModified
+                                                    ? new Date(f.lastModified).toLocaleString()
+                                                    : 'unbekannt'}
+                                                )
+                                            </small>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                ))
+            )}
+        </div>
+    );
 }

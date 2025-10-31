@@ -9,47 +9,71 @@ const s3 = new S3Client({ region: REGION });
 
 export async function GET(req: NextRequest) {
     try {
-        // ✅ Authentifizierung prüfen
+        // 🔐 Benutzer authentifizieren
         const token = req.cookies.get("token")?.value;
-        if (!token) {
+        if (!token)
             return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-        }
 
         let email = "anonymous";
         try {
-            const user = jwt.verify(token, JWT_SECRET) as any;
-            email = String(user?.email || user?.sub || "anonymous").toLowerCase();
+            const u = jwt.verify(token, JWT_SECRET) as any;
+            email = String(u?.email || u?.sub || "anonymous").toLowerCase();
         } catch {
             return NextResponse.json({ error: "invalid_token" }, { status: 403 });
         }
 
-        // ✅ Optionaler Suchparameter
         const q = new URL(req.url).searchParams.get("q")?.toLowerCase() || "";
 
-        // ✅ Dateien aus S3 abrufen (nur User-spezifische)
-        const prefix = `default/${email}/`;
+        // 📦 Alle Dateien aus S3 holen (rekursiv)
         const result = await s3.send(
             new ListObjectsV2Command({
                 Bucket: BUCKET,
-                Prefix: prefix,
             })
         );
 
-        // ✅ Daten aufbereiten
-        const items =
-            result.Contents?.filter((obj) => obj.Key)
-                .filter((obj) => !q || obj.Key!.toLowerCase().includes(q))
-                .map((obj) => ({
-                    key: obj.Key!,
-                    filename: obj.Key!.split("/").pop(),
-                    size: obj.Size || 0,
-                    lastModified: obj.LastModified,
-                    url: `https://${BUCKET}.s3.${REGION}.amazonaws.com/${obj.Key}`,
-                })) || [];
+        // 🧠 Gruppieren: groupId / user / file
+        const grouped: Record<
+            string,
+            Record<
+                string,
+                { filename: string; key: string; size: number; lastModified?: Date }[]
+            >
+        > = {};
 
-        return NextResponse.json({ items });
+        for (const obj of result.Contents || []) {
+            if (!obj.Key) continue;
+
+            const parts = obj.Key.split("/");
+            if (parts.length < 3) continue;
+
+            const [groupId, userEmail, fileName] = parts;
+            if (!groupId || !userEmail || !fileName) continue;
+
+            if (!grouped[groupId]) grouped[groupId] = {};
+            if (!grouped[groupId][userEmail]) grouped[groupId][userEmail] = [];
+
+            grouped[groupId][userEmail].push({
+                filename: fileName,
+                key: obj.Key,
+                size: obj.Size || 0,
+                lastModified: obj.LastModified,
+            });
+        }
+
+        // 🔎 Falls q angegeben ist, filtern
+        if (q) {
+            for (const g of Object.keys(grouped)) {
+                for (const u of Object.keys(grouped[g])) {
+                    grouped[g][u] = grouped[g][u].filter((f) =>
+                        f.filename.toLowerCase().includes(q)
+                    );
+                }
+            }
+        }
+
+        return NextResponse.json({ groups: grouped });
     } catch (err: any) {
-        console.error("❌ Fehler beim Laden der Dateien:", err);
+        console.error("❌ Fehler beim Abrufen der Dateien:", err);
         return NextResponse.json(
             { error: err.name || "ListError", message: err.message || "unknown" },
             { status: 500 }
