@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 
+const MODULES = ['MSTW', 'BUSW', 'ASPR', 'CLDE', 'OOPR', 'DSAI'] as const;
+
 export default function UploadPage() {
     const [file, setFile] = useState<File | null>(null);
-    const [groupId, setGroupId] = useState('default');
+    const [groupId, setGroupId] = useState<string>(MODULES[0]); // Startwert: MSTW
     const [tags, setTags] = useState('');
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState<string | null>(null);
@@ -54,18 +56,39 @@ export default function UploadPage() {
             <form onSubmit={onSubmit} className="grid gap-3">
                 <div>
                     <label>Datei</label><br />
-                    <input id="file-input" type="file" onChange={e => setFile(e.target.files?.[0] || null)} />
+                    <input
+                        id="file-input"
+                        type="file"
+                        onChange={e => setFile(e.target.files?.[0] || null)}
+                    />
                 </div>
+
                 <div>
-                    <label>Gruppen-ID</label><br />
-                    <input value={groupId} onChange={e => setGroupId(e.target.value)} />
+                    <label>Modul</label><br />
+                    <select
+                        value={groupId}
+                        onChange={(e) => setGroupId(e.target.value)}
+                    >
+                        {MODULES.map(mod => (
+                            <option key={mod} value={mod}>
+                                {mod}
+                            </option>
+                        ))}
+                    </select>
                 </div>
+
                 <div>
                     <label>Tags (kommagetrennt)</label><br />
-                    <input value={tags} onChange={e => setTags(e.target.value)} />
+                    <input
+                        value={tags}
+                        onChange={e => setTags(e.target.value)}
+                        placeholder="z.B. Skript, Übung, Prüfung"
+                    />
                 </div>
+
                 <button disabled={busy}>{busy ? 'Lädt…' : 'Hochladen'}</button>
             </form>
+
             {msg && <p style={{ marginTop: 12 }}>{msg}</p>}
         </div>
     );

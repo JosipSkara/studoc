@@ -1,77 +1,35 @@
 'use client';
-import { useEffect, useState } from 'react';
 
-type FileEntry = {
-    filename: string;
-    key: string;
-    size: number;
-    lastModified?: string;
-};
+import Link from 'next/link';
 
-type GroupData = Record<string, Record<string, FileEntry[]>>;
+const MODULES = ['MSTW', 'BUSW', 'ASPR', 'CLDE', 'OOPR', 'DSAI'];
 
-export default function FilesPage() {
-    const [q, setQ] = useState('');
-    const [groups, setGroups] = useState<GroupData>({});
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        (async () => {
-            setLoading(true);
-            const res = await fetch('/api/files/list?q=' + encodeURIComponent(q));
-            const data = await res.json();
-            setGroups(data.groups || {});
-            setLoading(false);
-        })();
-    }, [q]);
-
-    if (loading) return <p>🔄 Lade Dateien...</p>;
-
+export default function FilesIndexPage() {
     return (
         <div className="card">
-            <h1>📁 Dateien nach Gruppen</h1>
-            <input
-                placeholder="Suche nach Dateinamen"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                className="input"
-            />
+            <h1>📁 Module</h1>
+            <p className="mt-2">Wähle ein Modul, um die Studienunterlagen zu sehen.</p>
 
-            {Object.keys(groups).length === 0 ? (
-                <p style={{ marginTop: 20 }}>Keine Dateien gefunden.</p>
-            ) : (
-                Object.entries(groups).map(([groupId, users]) => (
-                    <div key={groupId} className="card" style={{ marginTop: 20 }}>
-                        <h2>📂 Gruppe: {groupId}</h2>
-
-                        {Object.entries(users).map(([userEmail, files]) => (
-                            <div key={userEmail} style={{ marginLeft: 20, marginTop: 12 }}>
-                                <h3>👤 {userEmail}</h3>
-                                <ul style={{ marginLeft: 20 }}>
-                                    {files.map((f) => (
-                                        <li key={f.key} style={{ marginBottom: 6 }}>
-                                            <a
-                                                href={`https://${process.env.NEXT_PUBLIC_STUDOC_BUCKET || 'studoc-stodjo-30.10.2025'}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${f.key}`}
-                                                target="_blank"
-                                                className="text-blue-500 underline"
-                                            >
-                                                {f.filename}
-                                            </a>{' '}
-                                            <small>
-                                                ({(f.size / 1024).toFixed(1)} KB •{' '}
-                                                {f.lastModified
-                                                    ? new Date(f.lastModified).toLocaleString()
-                                                    : 'unbekannt'}
-                                                )
-                                            </small>
-                                        </li>
-                                    ))}
-                                </ul>
+            <div
+                className="grid"
+                style={{
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                    gap: 16,
+                    marginTop: 16,
+                }}
+            >
+                {MODULES.map((m) => (
+                    <Link key={m} href={`/files/${m}`} className="card hover:opacity-90">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 22 }}>📂</span>
+                            <div>
+                                <div style={{ fontWeight: 600 }}>{m}</div>
+                                <div style={{ fontSize: 12, opacity: 0.75 }}></div>
                             </div>
-                        ))}
-                    </div>
-                ))
-            )}
+                        </div>
+                    </Link>
+                ))}
+            </div>
         </div>
     );
 }
