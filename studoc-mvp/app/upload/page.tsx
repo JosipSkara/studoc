@@ -3,11 +3,12 @@
 import { useState } from 'react';
 
 const MODULES = ['MSTW', 'BUSW', 'ASPR', 'CLDE', 'OOPR', 'DSAI'] as const;
+const TAGS = ['Leistungsnachweis', 'Aufgabe', 'Zusammenfassung', 'Skript'] as const;
 
 export default function UploadPage() {
     const [file, setFile] = useState<File | null>(null);
-    const [groupId, setGroupId] = useState<string>(MODULES[0]); // Startwert: MSTW
-    const [tags, setTags] = useState('');
+    const [groupId, setGroupId] = useState<string>(MODULES[0]);
+    const [tag, setTag] = useState<string>(TAGS[0]); // Dropdown-Startwert
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState<string | null>(null);
 
@@ -24,7 +25,7 @@ export default function UploadPage() {
             const fd = new FormData();
             fd.append('file', file);
             fd.append('groupId', groupId);
-            fd.append('tags', tags);
+            fd.append('tags', tag);
 
             const r = await fetch('/api/files/upload', { method: 'POST', body: fd });
             const j = await r.json();
@@ -78,12 +79,17 @@ export default function UploadPage() {
                 </div>
 
                 <div>
-                    <label>Tags (kommagetrennt)</label><br />
-                    <input
-                        value={tags}
-                        onChange={e => setTags(e.target.value)}
-                        placeholder="z.B. Skript, Übung, Prüfung"
-                    />
+                    <label>Tag</label><br />
+                    <select
+                        value={tag}
+                        onChange={(e) => setTag(e.target.value)}
+                    >
+                        {TAGS.map(t => (
+                            <option key={t} value={t}>
+                                {t}
+                            </option>
+                        ))}
+                    </select>
                 </div>
 
                 <button disabled={busy}>{busy ? 'Lädt…' : 'Hochladen'}</button>
