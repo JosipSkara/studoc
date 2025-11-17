@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
             { expiresIn: '7d' }
         );
 
-        const resp = NextResponse.redirect(new URL('/dashboard', req.url));
+        const resp = NextResponse.redirect(new URL('/dashboard'));
         resp.cookies.set('token', token, {
             httpOnly: true,
             sameSite: 'lax',
