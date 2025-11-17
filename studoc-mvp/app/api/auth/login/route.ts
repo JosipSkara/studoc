@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
             { expiresIn: '7d' }
         );
 
-        const resp = NextResponse.redirect(new URL('/dashboard'));
+        const resp = NextResponse.redirect(new URL('/dashboard', req.url));
         resp.cookies.set('token', token, {
             httpOnly: true,
             sameSite: 'lax',
@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
             secure: process.env.NODE_ENV === 'production',
         });
         return resp;
+
     } catch (err: any) {
         console.error('Login failed:', err);
         return NextResponse.json(
