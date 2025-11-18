@@ -5,9 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b31fe94d-b5f7-4f89-8d88-af1a06f4157c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/backend/buildspec-backend.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/Dockerfile" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/buildspec-frontend.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/infra/ecs-cluster.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/infra/loadbalancer.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/infra/security.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -84,7 +84,7 @@
       <workItem from="1763457421297" duration="645000" />
       <workItem from="1763458086192" duration="1629000" />
       <workItem from="1763461262117" duration="4986000" />
-      <workItem from="1763471548734" duration="1047000" />
+      <workItem from="1763471548734" duration="2366000" />
     </task>
     <servers />
   </component>
