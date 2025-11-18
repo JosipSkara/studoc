@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b31fe94d-b5f7-4f89-8d88-af1a06f4157c" name="Changes" comment="" />
+    <list default="true" id="b31fe94d-b5f7-4f89-8d88-af1a06f4157c" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/.env" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -39,6 +43,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "git-widget-placeholder": "studoc__V2",
     "junie.onboarding.icon.badge.shown": "true",
@@ -69,7 +74,8 @@
       <workItem from="1763457022479" duration="124000" />
       <workItem from="1763457191986" duration="225000" />
       <workItem from="1763457421297" duration="645000" />
-      <workItem from="1763458086192" duration="441000" />
+      <workItem from="1763458086192" duration="1629000" />
+      <workItem from="1763461262117" duration="1171000" />
     </task>
     <servers />
   </component>
