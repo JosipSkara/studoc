@@ -1,0 +1,56 @@
+name: Build & Deploy StuDoc to AWS
+
+on:
+  push:
+    branches: ["studoc_V2"]
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  BACKEND_REPO: studoc-backend
+  FRONTEND_REPO: studoc-frontend
+  ACCOUNT_ID: 992382686388
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      ######################################################
+      # BACKEND BUILD & PUSH
+      ######################################################
+      - name: Build backend Docker image
+        run: |
+          docker build -t $BACKEND_REPO ./backend
+
+      - name: Push backend Docker image to ECR
+        run: |
+          BACKEND_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO
+          docker tag $BACKEND_REPO:latest $BACKEND_URI:latest
+          docker push $BACKEND_URI:latest
+
+      ######################################################
+      # FRONTEND BUILD & PUSH
+      ######################################################
+      - name: Build frontend Docker image
+        run: |
+          docker build -t $FRONTEND_REPO ./frontend
+
+      - name: Push frontend Docker image to ECR
+        run: |
+          FRONTEND_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO
+          docker tag $FRONTEND_REPO:latest $FRONTEND_URI:latest
+          docker push $FRONTEND_URI:latest
