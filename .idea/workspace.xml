@@ -5,7 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b31fe94d-b5f7-4f89-8d88-af1a06f4157c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/infra/studoc-ecs.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/ecr.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/ecs-cluster.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/ecs-frontend-service.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/github-actions-oidc-role.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/loadbalancer.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/security.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/studoc-ecs.yml" beforeDir="false" afterPath="$PROJECT_DIR$/infra/studoc-all.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

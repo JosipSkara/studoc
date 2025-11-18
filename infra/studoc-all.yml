@@ -1,0 +1,287 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Full StuDoc deployment (Frontend + Backend + ECS + ALB) — AWS Academy compatible
+
+Parameters:
+  EcsExecutionRoleArn:
+    Type: String
+    Description: ARN of the existing ECS Fargate Execution Role provided by the Lab.
+
+  EcsTaskRoleArn:
+    Type: String
+    Description: ARN of the existing ECS Fargate Task Role provided by the Lab.
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet::Id
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet::Id
+
+  FrontendImageUri:
+    Type: String
+    Default: "992382686388.dkr.ecr.us-east-1.amazonaws.com/studoc-frontend:latest"
+
+  BackendImageUri:
+    Type: String
+    Default: "992382686388.dkr.ecr.us-east-1.amazonaws.com/studoc-backend:latest"
+
+Resources:
+
+  ##############################################
+  # SECURITY GROUPS
+  ##############################################
+
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP from internet to ALB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow ALB to ECS Tasks
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+
+  ##############################################
+  # LOAD BALANCER + TARGET GROUPS + ROUTES
+  ##############################################
+
+  StuDocAlb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: studoc-alb
+      Scheme: internet-facing
+      Type: application
+      SecurityGroups: [!Ref AlbSecurityGroup]
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+
+  FrontendTG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: studoc-frontend-tg
+      Protocol: HTTP
+      Port: 80
+      TargetType: ip
+      VpcId: !Ref VpcId
+      HealthCheckPath: /
+
+  BackendTG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: studoc-backend-tg
+      Protocol: HTTP
+      Port: 3000
+      TargetType: ip
+      VpcId: !Ref VpcId
+      HealthCheckPath: /health
+
+  HTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref StuDocAlb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref FrontendTG
+
+  ApiRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HTTPListener
+      Priority: 10
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - "/api/*"
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTG
+
+  ##############################################
+  # ECS CLUSTER
+  ##############################################
+
+  StuDocCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: studoc-cluster
+
+  ##############################################
+  # TASK DEFINITIONS (Frontend + Backend)
+  ##############################################
+
+  FrontendTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: studoc-frontend-task
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      ExecutionRoleArn: !Ref EcsExecutionRoleArn
+      TaskRoleArn: !Ref EcsTaskRoleArn
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      ContainerDefinitions:
+        - Name: studoc-frontend
+          Image: !Ref FrontendImageUri
+          PortMappings:
+            - ContainerPort: 80
+
+  BackendTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: studoc-backend-task
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      ExecutionRoleArn: !Ref EcsExecutionRoleArn
+      TaskRoleArn: !Ref EcsTaskRoleArn
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      ContainerDefinitions:
+        - Name: studoc-backend
+          Image: !Ref BackendImageUri
+          PortMappings:
+            - ContainerPort: 3000
+
+  ##############################################
+  # ECS SERVICES
+  ##############################################
+
+  FrontendService:
+    Type: AWS::ECS::Service
+    DependsOn: HTTPListener
+    Properties:
+      Cluster: !Ref StuDocCluster
+      ServiceName: studoc-frontend-service
+      LaunchType: FARGATE
+      DesiredCount: 1
+      TaskDefinition: !Ref FrontendTaskDef
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+          SecurityGroups: [!Ref ServiceSecurityGroup]
+      LoadBalancers:
+        - ContainerName: studoc-frontend
+          ContainerPort: 80
+          TargetGroupArn: !Ref FrontendTG
+
+  BackendService:
+    Type: AWS::ECS::Service
+    DependsOn: HTTPListener
+    Properties:
+      Cluster: !Ref StuDocCluster
+      ServiceName: studoc-backend-service
+      LaunchType: FARGATE
+      DesiredCount: 1
+      TaskDefinition: !Ref BackendTaskDef
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+          SecurityGroups: [!Ref ServiceSecurityGroup]
+      LoadBalancers:
+        - ContainerName: studoc-backend
+          ContainerPort: 3000
+          TargetGroupArn: !Ref BackendTG
+
+Outputs:
+  LoadBalancerDNS:
+    Value: !GetAtt StuDocAlb.DNSName
+    Description: Public URL of the Load Balancer
+
+  FrontendServiceName:
+    Value: !Ref FrontendService
+
+  BackendServiceName:
+    Value: !Ref BackendService
+    # AWS::Cognito::UserPool - Definiert das Benutzerverzeichnis
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: studoc-user-pool
+        # Beispiel für Anmeldetyp: Nur E-Mail
+        UsernameConfiguration:
+          CaseSensitive: false
+        # Passworteinstellungen, etc. (Kann komplexer sein)
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: false
+            RequireUppercase: true
+# AWS::Cognito::UserPoolClient - Die Anwendung, die sich mit dem Pool verbindet
+CognitoUserPoolClient:
+  Type: AWS::Cognito::UserPoolClient
+  Properties:
+    ClientName: studoc-alb-client
+    UserPoolId: !Ref CognitoUserPool # Verweist auf den oben erstellten Pool
+    GenerateSecret: true # Der Secret-Schlüssel wird für ALB benötigt
+    ExplicitAuthFlows:
+      - ALLOW_ADMIN_USER_PASSWORD_AUTH
+      - ALLOW_CUSTOM_AUTH
+      - ALLOW_USER_SRP_AUTH
+      - ALLOW_REFRESH_TOKEN_AUTH
+      - ALLOW_USER_PASSWORD_AUTH
+
+    # Der wichtigste Teil: Die Callback-URL, die der ALB erwartet
+    CallbackURLs:
+      # ACHTUNG: Hier müssten Sie die DNS-Adresse des ALB manuell eintragen,
+      # ODER Sie nutzen die Output-Werte und fügen diesen Wert in ein separates CLI-Skript ein,
+      # da der ALB DNS Name oft nicht im selben CloudFormation-Stack erstellt werden kann.
+      - !Sub "http://${Alb.DNSName}/oauth2/idpresponse"
+      # WICHTIG: Die ALB DNS-Adresse ist dynamisch.
+      # Sie können den ALB Namen als CloudFormation Output deklarieren,
+      # und Cognito dann mit einem weiteren Skript (z.B. nach dem Deployment) aktualisieren.
+      - "http://localhost/oauth2/idpresponse" # Fallback für lokale Tests
+
+  # AWS::ElasticLoadBalancingV2::ListenerRule - Definiert die Authentifizierungsregel
+  BackendListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Conditions:
+        - Field: path-pattern
+          Values: [ /api/* ]
+      Actions:
+        - Type: authenticate-cognito
+          AuthenticateCognitoConfig:
+            UserPoolArn: !GetAtt CognitoUserPool.Arn # <-- HOLT DIE ARN VOM POOL
+            UserPoolClientId: !Ref CognitoUserPoolClient # <-- HOLT DIE CLIENT ID
+            SessionCookieName: "AWSELBAuthSession"
+            OnUnauthenticatedRequest: authenticate
+          Order: 1
+        - Type: forward
+          TargetGroupArn: !Ref BackendTG
+          Order: 2
+      ListenerArn: !Ref AlbListener
+      Priority: 10
