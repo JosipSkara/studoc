@@ -1,7 +1,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Full StuDoc deployment (Frontend + Backend + ECS + ALB) — AWS Academy compatible
+Description: Full StuDoc deployment (Frontend + Backend + ECS + ALB + Cognito) — AWS Academy compatible
 
 Parameters:
+  # Lab-Rollen/VPC-Parameter (Werden von GitHub Actions übergeben)
   EcsExecutionRoleArn:
     Type: String
     Description: ARN of the existing ECS Fargate Execution Role provided by the Lab.
@@ -19,15 +20,62 @@ Parameters:
   PublicSubnet2:
     Type: AWS::EC2::Subnet::Id
 
+  # Image-Parameter (Werden von GitHub Actions übergeben)
   FrontendImageUri:
     Type: String
-    Default: "992382686388.dkr.ecr.us-east-1.amazonaws.com/studoc-frontend:latest"
+    Description: ECR URI of the latest frontend Docker image.
 
   BackendImageUri:
     Type: String
-    Default: "992382686388.dkr.ecr.us-east-1.amazonaws.com/studoc-backend:latest"
+    Description: ECR URI of the latest backend Docker image.
+
 
 Resources:
+
+  ##############################################
+  # COGNITO USER POOL & CLIENT
+  ##############################################
+
+  StuDocUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: StuDocV2UserPool
+      UsernameConfiguration:
+        CaseSensitive: false
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+          AttributeDataType: String
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireUppercase: true
+          RequireSymbols: false # Kann angepasst werden
+
+  StuDocUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: StuDocFrontendClient
+      UserPoolId: !Ref StuDocUserPool
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+      CallbackURLs:
+        - http://localhost:3000/callback
+      LogoutURLs:
+        - http://localhost:3000/logout
+
+  StuDocUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: studoc-v2-auth-unique # ÄNDERE DIESEN WERT (Muss global eindeutig sein!)
+      UserPoolId: !Ref StuDocUserPool
 
   ##############################################
   # SECURITY GROUPS
@@ -127,7 +175,7 @@ Resources:
       ClusterName: studoc-cluster
 
   ##############################################
-  # TASK DEFINITIONS (Frontend + Backend)
+  # TASK DEFINITIONS (Integration Cognito)
   ##############################################
 
   FrontendTaskDef:
@@ -148,6 +196,13 @@ Resources:
           Image: !Ref FrontendImageUri
           PortMappings:
             - ContainerPort: 80
+          # Übergabe der Cognito-Werte als Umgebungsvariablen
+          Environment:
+            - Name: COGNITO_USER_POOL_ID
+              Value: !Ref StuDocUserPool
+            - Name: COGNITO_CLIENT_ID
+              Value: !Ref StuDocUserPoolClient
+
 
   BackendTaskDef:
     Type: AWS::ECS::TaskDefinition
@@ -167,6 +222,12 @@ Resources:
           Image: !Ref BackendImageUri
           PortMappings:
             - ContainerPort: 3000
+          # Übergabe der Cognito-Werte als Umgebungsvariablen
+          Environment:
+            - Name: COGNITO_USER_POOL_ID
+              Value: !Ref StuDocUserPool
+            - Name: COGNITO_CLIENT_ID
+              Value: !Ref StuDocUserPoolClient
 
   ##############################################
   # ECS SERVICES
@@ -218,70 +279,16 @@ Outputs:
   LoadBalancerDNS:
     Value: !GetAtt StuDocAlb.DNSName
     Description: Public URL of the Load Balancer
-
+  UserPoolId:
+    Value: !Ref StuDocUserPool
+    Description: Cognito User Pool ID (Für Frontend-Konfiguration)
+  UserPoolClientId:
+    Value: !Ref StuDocUserPoolClient
+    Description: Cognito User Pool Client ID (Für Frontend-Konfiguration)
+  UserPoolDomain:
+    Value: !GetAtt StuDocUserPoolDomain.Domain
+    Description: Cognito Hosted UI Domain
   FrontendServiceName:
     Value: !Ref FrontendService
-
   BackendServiceName:
     Value: !Ref BackendService
-    # AWS::Cognito::UserPool - Definiert das Benutzerverzeichnis
-    CognitoUserPool:
-      Type: AWS::Cognito::UserPool
-      Properties:
-        UserPoolName: studoc-user-pool
-        # Beispiel für Anmeldetyp: Nur E-Mail
-        UsernameConfiguration:
-          CaseSensitive: false
-        # Passworteinstellungen, etc. (Kann komplexer sein)
-        Policies:
-          PasswordPolicy:
-            MinimumLength: 8
-            RequireLowercase: true
-            RequireNumbers: true
-            RequireSymbols: false
-            RequireUppercase: true
-# AWS::Cognito::UserPoolClient - Die Anwendung, die sich mit dem Pool verbindet
-CognitoUserPoolClient:
-  Type: AWS::Cognito::UserPoolClient
-  Properties:
-    ClientName: studoc-alb-client
-    UserPoolId: !Ref CognitoUserPool # Verweist auf den oben erstellten Pool
-    GenerateSecret: true # Der Secret-Schlüssel wird für ALB benötigt
-    ExplicitAuthFlows:
-      - ALLOW_ADMIN_USER_PASSWORD_AUTH
-      - ALLOW_CUSTOM_AUTH
-      - ALLOW_USER_SRP_AUTH
-      - ALLOW_REFRESH_TOKEN_AUTH
-      - ALLOW_USER_PASSWORD_AUTH
-
-    # Der wichtigste Teil: Die Callback-URL, die der ALB erwartet
-    CallbackURLs:
-      # ACHTUNG: Hier müssten Sie die DNS-Adresse des ALB manuell eintragen,
-      # ODER Sie nutzen die Output-Werte und fügen diesen Wert in ein separates CLI-Skript ein,
-      # da der ALB DNS Name oft nicht im selben CloudFormation-Stack erstellt werden kann.
-      - !Sub "http://${Alb.DNSName}/oauth2/idpresponse"
-      # WICHTIG: Die ALB DNS-Adresse ist dynamisch.
-      # Sie können den ALB Namen als CloudFormation Output deklarieren,
-      # und Cognito dann mit einem weiteren Skript (z.B. nach dem Deployment) aktualisieren.
-      - "http://localhost/oauth2/idpresponse" # Fallback für lokale Tests
-
-  # AWS::ElasticLoadBalancingV2::ListenerRule - Definiert die Authentifizierungsregel
-  BackendListenerRule:
-    Type: AWS::ElasticLoadBalancingV2::ListenerRule
-    Properties:
-      Conditions:
-        - Field: path-pattern
-          Values: [ /api/* ]
-      Actions:
-        - Type: authenticate-cognito
-          AuthenticateCognitoConfig:
-            UserPoolArn: !GetAtt CognitoUserPool.Arn # <-- HOLT DIE ARN VOM POOL
-            UserPoolClientId: !Ref CognitoUserPoolClient # <-- HOLT DIE CLIENT ID
-            SessionCookieName: "AWSELBAuthSession"
-            OnUnauthenticatedRequest: authenticate
-          Order: 1
-        - Type: forward
-          TargetGroupArn: !Ref BackendTG
-          Order: 2
-      ListenerArn: !Ref AlbListener
-      Priority: 10
