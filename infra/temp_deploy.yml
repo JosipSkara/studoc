@@ -1,0 +1,178 @@
+﻿AWSTemplateFormatVersion: "2010-09-09"
+Description: StuDoc Backend (Vereinfachte Version)
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: StuDoc
+
+Resources:
+
+  # DynamoDB Tabelle
+  ModulesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ProjectName}-Modules"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: moduleId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: moduleId
+          KeyType: HASH
+
+  # Lambda Funktion (Code wird aus dem lokalen Ordner geladen)
+  GetModulesLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-GetModules"
+      Runtime: nodejs20.x
+      Handler: index.handler # index.js Datei, function handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ModulesTable
+      # 🚨 Code wird aus dem aktuellen Verzeichnis geladen
+      Code:
+        ZipFile: |
+          const AWS = require("aws-sdk");
+          const dynamo = new AWS.DynamoDB.DocumentClient(); # Verwenden Sie DocumentClient
+          
+          exports.handler = async (event) => {
+            try {
+              const data = await dynamo.scan({ TableName: process.env.TABLE_NAME }).promise();
+
+              return {
+                statusCode: 200,
+                headers: {
+                  "Access-Control-Allow-Origin": "*",
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data.Items || []),
+              };
+            } catch (err) {
+              console.error("❌ Lambda failed:", err);
+              return {
+                statusCode: 500,
+                headers: { "Access-Control-Allow-Origin": "*" },
+                body: JSON.stringify({ error: "Internal Server Error" }),
+              };
+            }
+          };
+
+  # IAM Rolle (Berechtigungen für DynamoDB und Logs)
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-LambdaRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                  - dynamodb:GetItem
+                Resource: !GetAtt ModulesTable.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "${ProjectName}-API"
+
+  ApiGatewayResourceModules:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: "modules"
+      RestApiId: !Ref ApiGateway
+
+  # GET Methode (mit Lambda Integration)
+  ApiGatewayMethodGetModules:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiGatewayResourceModules
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetModulesLambda.Arn}/invocations"
+      MethodResponses:
+        - StatusCode: 200
+
+  # OPTIONS Methode (für CORS Preflight)
+  ApiGatewayOptionsModules:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiGatewayResourceModules
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET,POST'"
+            ResponseTemplates:
+              application/json: "{}"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+
+  # Deployment des API Gateways
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref ApiGateway
+      Description: Auto deployment
+    DependsOn:
+      - ApiGatewayMethodGetModules
+      - ApiGatewayOptionsModules
+
+  # Stage (die finale URL-Komponente)
+  ApiGatewayStageProd:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: prod
+      RestApiId: !Ref ApiGateway
+      DeploymentId: !Ref ApiGatewayDeployment
+
+  # Lambda Berechtigung
+  LambdaPermissionForApi:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetModulesLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*" # Erlaubt alle Methoden
+
+Outputs:
+  ApiEndpoint:
+    Description: Base URL for the StuDoc API
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"

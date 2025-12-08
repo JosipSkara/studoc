@@ -1,0 +1,184 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: StuDoc Backend Stack (DynamoDB + Lambda + API Gateway + CORS, LabRole-kompatibel)
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: StuDoc
+    Description: Name des Projekts fuer Ressourcen-Tags
+
+  ApiStageName:
+    Type: String
+    Default: prod
+    Description: Name der API Stage (z. B. prod oder test)
+
+Resources:
+
+  ##############################################
+  # 1. DynamoDB Table
+  ##############################################
+  ModulesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ProjectName}-Modules"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: moduleId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: moduleId
+          KeyType: HASH
+
+  ##############################################
+  # 2. Lambda Function (CommonJS-kompatibel, nutzt LabRole)
+  ##############################################
+  GetModulesLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${ProjectName}-GetModules"
+      Runtime: nodejs20.x
+      Handler: index.handler
+      # LabRole direkt einbinden:
+      Role: arn:aws:iam::992382686388:role/LabRole
+      Timeout: 10
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ModulesTable
+      Code:
+        ZipFile: |
+          const AWS = require("aws-sdk");
+          const dynamo = new AWS.DynamoDB.DocumentClient();
+
+          const corsHeaders = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET,OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+          };
+
+          exports.handler = async (event) => {
+            try {
+              const data = await dynamo.scan({
+                TableName: process.env.TABLE_NAME,
+              }).promise();
+
+              return {
+                statusCode: 200,
+                headers: corsHeaders,
+                body: JSON.stringify(data.Items || []),
+              };
+            } catch (err) {
+              console.error("DynamoDB Fehler:", err);
+              return {
+                statusCode: 500,
+                headers: corsHeaders,
+                body: JSON.stringify({ error: "Internal Server Error", details: err.message }),
+              };
+            }
+          };
+
+  ##############################################
+  # 3. API Gateway
+  ##############################################
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "${ProjectName}-API"
+      Description: StuDoc REST API mit CORS Unterstuetzung
+      EndpointConfiguration:
+        Types: ["REGIONAL"]
+
+  ApiGatewayResourceModules:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: "modules"
+      RestApiId: !Ref ApiGateway
+
+  ##############################################
+  # 4. GET Method (Lambda Proxy Integration)
+  ##############################################
+  ApiGatewayMethodGetModules:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiGatewayResourceModules
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetModulesLambda.Arn}/invocations"
+      MethodResponses:
+        - StatusCode: 200
+
+  ##############################################
+  # 5. OPTIONS Method (CORS)
+  ##############################################
+  ApiGatewayOptionsModules:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiGatewayResourceModules
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET,POST'"
+            ResponseTemplates:
+              application/json: "{}"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+
+  ##############################################
+  # 6. Deployment & Stage
+  ##############################################
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref ApiGateway
+      Description: Automatic deployment
+    DependsOn:
+      - ApiGatewayMethodGetModules
+      - ApiGatewayOptionsModules
+
+  ApiGatewayStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: !Ref ApiStageName
+      RestApiId: !Ref ApiGateway
+      DeploymentId: !Ref ApiGatewayDeployment
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          MetricsEnabled: true
+          LoggingLevel: INFO
+
+  ##############################################
+  # 7. Lambda Permission
+  ##############################################
+  LambdaPermissionForApi:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetModulesLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+
+Outputs:
+  ApiEndpoint:
+    Description: Base URL fuer die StuDoc API
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiStageName}/modules"
+
+  TableName:
+    Description: Name der DynamoDB Tabelle
+    Value: !Ref ModulesTable

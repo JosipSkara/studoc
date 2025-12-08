@@ -1,15 +1,13 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Full StuDoc deployment (Frontend + Backend + ECS + ALB + Cognito) — AWS Academy compatible
+Description: StuDoc Base Stack (Frontend + Backend + Cognito Auth)
 
 Parameters:
-  # Lab-Rollen/VPC-Parameter (Werden von GitHub Actions übergeben)
   EcsExecutionRoleArn:
     Type: String
-    Description: ARN of the existing ECS Fargate Execution Role provided by the Lab.
-
+    Description: ARN of the ECS Task Execution Role (must be created beforehand).
   EcsTaskRoleArn:
     Type: String
-    Description: ARN of the existing ECS Fargate Task Role provided by the Lab.
+    Description: ARN of the ECS Task Role (if needed for AWS interaction).
 
   VpcId:
     Type: AWS::EC2::VPC::Id
@@ -20,62 +18,17 @@ Parameters:
   PublicSubnet2:
     Type: AWS::EC2::Subnet::Id
 
-  # Image-Parameter (Werden von GitHub Actions übergeben)
-  FrontendImageUri:
+  DatabaseImageUri:
     Type: String
-    Description: ECR URI of the latest frontend Docker image.
+    Default: postgres:15-alpine
+    Description: PostgreSQL Docker image URI.
 
-  BackendImageUri:
+  CognitoDomainPrefix:
     Type: String
-    Description: ECR URI of the latest backend Docker image.
-
+    Default: studocauthdemo
+    Description: Globally unique prefix for Cognito hosted domain.
 
 Resources:
-
-  ##############################################
-  # COGNITO USER POOL & CLIENT
-  ##############################################
-
-  StuDocUserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      UserPoolName: StuDocV2UserPool
-      UsernameConfiguration:
-        CaseSensitive: false
-      AutoVerifiedAttributes:
-        - email
-      Schema:
-        - Name: email
-          Required: true
-          Mutable: true
-          AttributeDataType: String
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-          RequireLowercase: true
-          RequireNumbers: true
-          RequireUppercase: true
-          RequireSymbols: false # Kann angepasst werden
-
-  StuDocUserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      ClientName: StuDocFrontendClient
-      UserPoolId: !Ref StuDocUserPool
-      ExplicitAuthFlows:
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
-      GenerateSecret: false
-      CallbackURLs:
-        - http://localhost:3000/callback
-      LogoutURLs:
-        - http://localhost:3000/logout
-
-  StuDocUserPoolDomain:
-    Type: AWS::Cognito::UserPoolDomain
-    Properties:
-      Domain: studoc-v2-auth-unique # ÄNDERE DIESEN WERT (Muss global eindeutig sein!)
-      UserPoolId: !Ref StuDocUserPool
 
   ##############################################
   # SECURITY GROUPS
@@ -84,7 +37,7 @@ Resources:
   AlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow HTTP from internet to ALB
+      GroupDescription: Allow HTTP traffic from the Internet to the ALB
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -95,7 +48,7 @@ Resources:
   ServiceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow ALB to ECS Tasks
+      GroupDescription: Allow traffic from ALB and internal ECS communication
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -107,8 +60,15 @@ Resources:
           ToPort: 3000
           SourceSecurityGroupId: !Ref AlbSecurityGroup
 
+  InternalEcsIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ServiceSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref ServiceSecurityGroup
+
   ##############################################
-  # LOAD BALANCER + TARGET GROUPS + ROUTES
+  # LOAD BALANCER + TARGET GROUPS
   ##############################################
 
   StuDocAlb:
@@ -159,8 +119,7 @@ Resources:
       Priority: 10
       Conditions:
         - Field: path-pattern
-          Values:
-            - "/api/*"
+          Values: ["/api/*"]
       Actions:
         - Type: forward
           TargetGroupArn: !Ref BackendTG
@@ -175,8 +134,31 @@ Resources:
       ClusterName: studoc-cluster
 
   ##############################################
-  # TASK DEFINITIONS (Integration Cognito)
+  # TASK DEFINITIONS
   ##############################################
+
+  DatabaseTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: studoc-db-task
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      ExecutionRoleArn: !Ref EcsExecutionRoleArn
+      TaskRoleArn: !Ref EcsTaskRoleArn
+      ContainerDefinitions:
+        - Name: studoc-db
+          Image: !Ref DatabaseImageUri
+          PortMappings:
+            - ContainerPort: 5432
+          Environment:
+            - Name: POSTGRES_DB
+              Value: studoc
+            - Name: POSTGRES_USER
+              Value: studoc
+            - Name: POSTGRES_PASSWORD
+              Value: password
 
   FrontendTaskDef:
     Type: AWS::ECS::TaskDefinition
@@ -188,21 +170,14 @@ Resources:
       RequiresCompatibilities: [FARGATE]
       ExecutionRoleArn: !Ref EcsExecutionRoleArn
       TaskRoleArn: !Ref EcsTaskRoleArn
-      RuntimePlatform:
-        OperatingSystemFamily: LINUX
-        CpuArchitecture: X86_64
       ContainerDefinitions:
         - Name: studoc-frontend
-          Image: !Ref FrontendImageUri
+          Image: 992382686388.dkr.ecr.us-east-1.amazonaws.com/studoc-frontend:latest
           PortMappings:
             - ContainerPort: 80
-          # Übergabe der Cognito-Werte als Umgebungsvariablen
           Environment:
-            - Name: COGNITO_USER_POOL_ID
-              Value: !Ref StuDocUserPool
-            - Name: COGNITO_CLIENT_ID
-              Value: !Ref StuDocUserPoolClient
-
+            - Name: VITE_API_BASE_URL
+              Value: !Sub "http://${StuDocAlb.DNSName}"
 
   BackendTaskDef:
     Type: AWS::ECS::TaskDefinition
@@ -214,24 +189,42 @@ Resources:
       RequiresCompatibilities: [FARGATE]
       ExecutionRoleArn: !Ref EcsExecutionRoleArn
       TaskRoleArn: !Ref EcsTaskRoleArn
-      RuntimePlatform:
-        OperatingSystemFamily: LINUX
-        CpuArchitecture: X86_64
       ContainerDefinitions:
         - Name: studoc-backend
-          Image: !Ref BackendImageUri
+          Image: 992382686388.dkr.ecr.us-east-1.amazonaws.com/studoc-backend:latest
           PortMappings:
             - ContainerPort: 3000
-          # Übergabe der Cognito-Werte als Umgebungsvariablen
           Environment:
             - Name: COGNITO_USER_POOL_ID
-              Value: !Ref StuDocUserPool
+              Value: !Ref CognitoUserPool
             - Name: COGNITO_CLIENT_ID
-              Value: !Ref StuDocUserPoolClient
+              Value: !Ref CognitoUserPoolClient
+            - Name: COGNITO_DOMAIN
+              Value: !Sub "${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
+            - Name: PORT
+              Value: "3000"
 
   ##############################################
   # ECS SERVICES
   ##############################################
+
+  DatabaseService:
+    Type: AWS::ECS::Service
+    DependsOn: [DatabaseTaskDef, InternalEcsIngress]
+    Properties:
+      Cluster: !Ref StuDocCluster
+      ServiceName: studoc-db-service
+      LaunchType: FARGATE
+      DesiredCount: 1
+      TaskDefinition: !Ref DatabaseTaskDef
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
 
   FrontendService:
     Type: AWS::ECS::Service
@@ -248,7 +241,8 @@ Resources:
           Subnets:
             - !Ref PublicSubnet1
             - !Ref PublicSubnet2
-          SecurityGroups: [!Ref ServiceSecurityGroup]
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
       LoadBalancers:
         - ContainerName: studoc-frontend
           ContainerPort: 80
@@ -256,7 +250,7 @@ Resources:
 
   BackendService:
     Type: AWS::ECS::Service
-    DependsOn: HTTPListener
+    DependsOn: ApiRule
     Properties:
       Cluster: !Ref StuDocCluster
       ServiceName: studoc-backend-service
@@ -269,26 +263,70 @@ Resources:
           Subnets:
             - !Ref PublicSubnet1
             - !Ref PublicSubnet2
-          SecurityGroups: [!Ref ServiceSecurityGroup]
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
       LoadBalancers:
         - ContainerName: studoc-backend
           ContainerPort: 3000
           TargetGroupArn: !Ref BackendTG
 
+  ##############################################
+  # COGNITO RESOURCES
+  ##############################################
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: studoc-userpool
+      AutoVerifiedAttributes: [email]
+      UsernameAttributes: [email]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: false
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: studoc-app-client
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      PreventUserExistenceErrors: ENABLED
+      SupportedIdentityProviders: [COGNITO]
+      CallbackURLs:
+        - http://localhost:3000/callback
+      LogoutURLs:
+        - http://localhost:3000/logout
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [email, openid, profile]
+      AllowedOAuthFlowsUserPoolClient: true
+
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref CognitoDomainPrefix
+      UserPoolId: !Ref CognitoUserPool
+
 Outputs:
   LoadBalancerDNS:
+    Description: Public ALB DNS
     Value: !GetAtt StuDocAlb.DNSName
-    Description: Public URL of the Load Balancer
-  UserPoolId:
-    Value: !Ref StuDocUserPool
-    Description: Cognito User Pool ID (Für Frontend-Konfiguration)
-  UserPoolClientId:
-    Value: !Ref StuDocUserPoolClient
-    Description: Cognito User Pool Client ID (Für Frontend-Konfiguration)
-  UserPoolDomain:
-    Value: !GetAtt StuDocUserPoolDomain.Domain
-    Description: Cognito Hosted UI Domain
-  FrontendServiceName:
-    Value: !Ref FrontendService
-  BackendServiceName:
-    Value: !Ref BackendService
+
+  CognitoHostedUI:
+    Description: Hosted UI URL for Cognito Login
+    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/login?client_id=${CognitoUserPoolClient}&response_type=code&scope=email+openid+profile&redirect_uri=http://localhost:3000/callback"

@@ -1,0 +1,224 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: StuDoc Base Stack (Network + ECS Cluster + Cognito)
+
+Parameters:
+  EcsExecutionRoleArn:
+    Type: String
+    Description: ARN of the ECS Task Execution Role.
+  EcsTaskRoleArn:
+    Type: String
+    Description: ARN of the ECS Task Role.
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet::Id
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet::Id
+
+  ##############################################
+  # NEW: Cognito Parameters
+  ##############################################
+  UserPoolName:
+    Type: String
+    Default: StuDocUserPool
+    Description: Name of the Cognito User Pool
+  CognitoDomainPrefix:
+    Type: String
+    Default: studoc-auth
+    Description: Unique prefix for Cognito hosted domain (must be globally unique)
+
+Resources:
+
+  ##############################################
+  # SECURITY GROUPS
+  ##############################################
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP traffic from the Internet to the ALB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow traffic from ALB and internal ECS communication
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+
+  InternalEcsIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ServiceSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref ServiceSecurityGroup
+
+  ##############################################
+  # LOAD BALANCER + TARGET GROUPS
+  ##############################################
+  StuDocAlb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: studoc-alb
+      Scheme: internet-facing
+      Type: application
+      SecurityGroups: [!Ref AlbSecurityGroup]
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+
+  FrontendTG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: studoc-frontend-tg
+      Protocol: HTTP
+      Port: 80
+      TargetType: ip
+      VpcId: !Ref VpcId
+      HealthCheckPath: /
+
+  BackendTG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: studoc-backend-tg
+      Protocol: HTTP
+      Port: 3000
+      TargetType: ip
+      VpcId: !Ref VpcId
+      HealthCheckPath: /health
+
+  HTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref StuDocAlb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref FrontendTG
+
+  ApiRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HTTPListener
+      Priority: 10
+      Conditions:
+        - Field: path-pattern
+          Values: ["/api/*"]
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTG
+
+  ##############################################
+  # ECS CLUSTER
+  ##############################################
+  StuDocCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: studoc-cluster
+
+  ##############################################
+  # COGNITO USER POOL
+  ##############################################
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref UserPoolName
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: false
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: studoc-app-client
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      PreventUserExistenceErrors: ENABLED
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - http://localhost:3000/callback
+      LogoutURLs:
+        - http://localhost:3000/logout
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref CognitoDomainPrefix
+      UserPoolId: !Ref CognitoUserPool
+
+Outputs:
+  ClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref StuDocCluster
+  AlbSecurityGroupId:
+    Description: Security Group for ALB
+    Value: !Ref AlbSecurityGroup
+  ServiceSecurityGroupId:
+    Description: Security Group for ECS Services
+    Value: !Ref ServiceSecurityGroup
+  PublicSubnet1:
+    Description: Public Subnet 1 ID
+    Value: !Ref PublicSubnet1
+  PublicSubnet2:
+    Description: Public Subnet 2 ID
+    Value: !Ref PublicSubnet2
+  FrontendTGArn:
+    Description: Frontend Target Group ARN
+    Value: !Ref FrontendTG
+  BackendTGArn:
+    Description: Backend Target Group ARN
+    Value: !Ref BackendTG
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref CognitoUserPool
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref CognitoUserPoolClient
+  CognitoHostedUI:
+    Description: Hosted UI URL for Cognito Login
+    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/login?client_id=${CognitoUserPoolClient}&response_type=code&scope=email+openid+profile&redirect_uri=http://localhost:3000/callback"

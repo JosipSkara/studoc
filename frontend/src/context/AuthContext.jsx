@@ -1,0 +1,80 @@
+// src/context/AuthContext.jsx
+import { createContext, useContext, useEffect, useState } from "react";
+import {
+    getCurrentUser,
+    fetchAuthSession,
+    signOut,
+} from "aws-amplify/auth";
+
+export const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [roles, setRoles] = useState([]); // 👈 mehrere Gruppen möglich
+    const [attributes, setAttributes] = useState({});
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const checkUser = async () => {
+            try {
+                console.log("🔍 Prüfe aktuelle Cognito-Session...");
+
+                // Prüfen, ob Benutzer eingeloggt ist
+                const currentUser = await getCurrentUser();
+                const session = await fetchAuthSession();
+                const payload = session.tokens?.idToken?.payload;
+
+                if (!payload) throw new Error("Kein ID Token vorhanden");
+
+                setUser(currentUser);
+
+                // Gruppen auslesen
+                const groups = payload["cognito:groups"] ?? [];
+                setRoles(groups);
+
+                // Benutzerattribute setzen
+                setAttributes({
+                    given_name: payload?.given_name ?? "",
+                    family_name: payload?.family_name ?? "",
+                    email: payload?.email ?? "",
+                    sub: payload?.sub ?? "",
+                    studiengang: payload?.["custom:studiengang"] ?? "",
+                });
+
+                console.log("✅ Eingeloggter Benutzer:", currentUser.username);
+                console.log("👥 Gruppen:", groups);
+            } catch (err) {
+                console.warn("⚠️ Kein aktiver Benutzer gefunden:", err);
+                setUser(null);
+                setRoles([]);
+                setAttributes({});
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        checkUser();
+    }, []);
+
+    const logout = async () => {
+        try {
+            console.log("🚪 Melde Benutzer ab...");
+            await signOut({
+                global: true,
+                redirectTo: import.meta.env.VITE_LOGOUT_URI, // leitet zurück zur Startseite
+            });
+            setUser(null);
+            setRoles([]);
+        } catch (error) {
+            console.error("❌ Fehler beim Logout:", error);
+        }
+    };
+
+    return (
+        <AuthContext.Provider value={{ user, roles, attributes, loading, logout }}>
+            {children}
+        </AuthContext.Provider>
+    );
+};
+
+export const useAuth = () => useContext(AuthContext);

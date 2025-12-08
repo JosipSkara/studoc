@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: StuDoc S3 Bucket für Modul-Dateien
+
+Parameters:
+  # Global eindeutiger Name für den Bucket. MUSS klein geschrieben sein.
+  BucketName:
+    Type: String
+    Description: Der global eindeutige Name für den S3 Bucket.
+    MinLength: 3
+    MaxLength: 63
+    Default: studoc-uploads-dev-example
+
+Resources:
+  # 1. Haupt-S3-Bucket
+  StuDocFileBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      # Optional: Versionierung aktivieren für besseren Datenschutz
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Project
+          Value: StuDoc
+
+  # 2. Ausgabe des Bucket-Namens
+  # Dies ist nützlich, um den Bucket-Namen als Umgebungsvariable im Lambda zu verwenden.
+Outputs:
+  StuDocBucketName:
+    Description: Der Name des erstellten S3 Buckets
+    Value: !Ref StuDocFileBucket
+    Export:
+      Name: StuDoc-ModuleFilesBucketName

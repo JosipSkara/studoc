@@ -1,0 +1,19 @@
+aws cognito-idp admin-create-user `
+  --user-pool-id <UserPoolId> `
+  --username testuser@example.com `
+  --user-attributes Name=email,Value=testuser@example.com `
+  --message-action SUPPRESS
+
+
+aws cognito-idp admin-create-user `
+  --user-pool-id us-east-1_kV7PS9DeO `
+  --username josipskara31@gmail.com `
+  --user-attributes Name=email,Value=josipskara31@gmail.com `
+  --message-action SUPPRESS
+
+#Passwort setzen
+aws cognito-idp admin-set-user-password `
+  --user-pool-id us-east-1_kV7PS9DeO `
+  --username josipskara31@gmail.com `
+  --password Test1234! `
+  --permanent
