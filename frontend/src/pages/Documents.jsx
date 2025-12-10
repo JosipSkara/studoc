@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { apiListModules, apiCreateModule } from "../services/apiService.js";
 
 const Documents = () => {
     const [modules, setModules] = useState([]);
@@ -11,21 +11,11 @@ const Documents = () => {
         fetchModules();
     }, []);
 
+    // 📦 Module abrufen
     const fetchModules = async () => {
         try {
             setLoading(true);
-            const session = await fetchAuthSession();
-            const token = session.tokens.idToken.toString();
-
-            const res = await fetch(`${import.meta.env.VITE_API_BASE}/modules`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const data = await apiListModules(); // ✅ nutzt Access Token automatisch
             setModules(data);
         } catch (error) {
             console.error("❌ Fehler beim Laden der Module:", error);
@@ -35,36 +25,15 @@ const Documents = () => {
         }
     };
 
-    // 🔹 Neues Modul erstellen
+    // ➕ Neues Modul erstellen
     const handleCreateModule = async () => {
         const name = document.getElementById("modulname").value.trim();
         const description = document.getElementById("beschreibung").value.trim();
         if (!name) return alert("Bitte gib einen Modulnamen ein!");
 
         try {
-            const session = await fetchAuthSession();
-            const token = session.tokens.idToken.toString();
-
-            const res = await fetch(`${import.meta.env.VITE_API_BASE}/modules`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ name, description }),
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || "Fehler beim Erstellen");
-            }
-
-            const newModule = await res.json();
-
-            // Liste automatisch neu laden
-            await fetchModules();
-
-            // Eingabefelder leeren
+            await apiCreateModule(name, description); // ✅ nutzt automatisch fetchProtected
+            await fetchModules(); // Liste neu laden
             document.getElementById("modulname").value = "";
             document.getElementById("beschreibung").value = "";
         } catch (error) {

@@ -1,16 +1,12 @@
 // src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
-import {
-    getCurrentUser,
-    fetchAuthSession,
-    signOut,
-} from "aws-amplify/auth";
+import { getCurrentUser, fetchAuthSession, signOut } from "aws-amplify/auth";
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [roles, setRoles] = useState([]); // 👈 mehrere Gruppen möglich
+    const [roles, setRoles] = useState([]); // ✅ Normalisierte Rollen (z. B. ["admins"])
     const [attributes, setAttributes] = useState({});
     const [loading, setLoading] = useState(true);
 
@@ -19,7 +15,6 @@ export const AuthProvider = ({ children }) => {
             try {
                 console.log("🔍 Prüfe aktuelle Cognito-Session...");
 
-                // Prüfen, ob Benutzer eingeloggt ist
                 const currentUser = await getCurrentUser();
                 const session = await fetchAuthSession();
                 const payload = session.tokens?.idToken?.payload;
@@ -28,9 +23,10 @@ export const AuthProvider = ({ children }) => {
 
                 setUser(currentUser);
 
-                // Gruppen auslesen
-                const groups = payload["cognito:groups"] ?? [];
-                setRoles(groups);
+                // 🔹 Gruppen auslesen & in Kleinbuchstaben umwandeln
+                const groupsRaw = payload["cognito:groups"] ?? [];
+                const normalizedGroups = groupsRaw.map((g) => g.toLowerCase());
+                setRoles(normalizedGroups);
 
                 // Benutzerattribute setzen
                 setAttributes({
@@ -42,7 +38,7 @@ export const AuthProvider = ({ children }) => {
                 });
 
                 console.log("✅ Eingeloggter Benutzer:", currentUser.username);
-                console.log("👥 Gruppen:", groups);
+                console.log("👥 Gruppen (normalisiert):", normalizedGroups);
             } catch (err) {
                 console.warn("⚠️ Kein aktiver Benutzer gefunden:", err);
                 setUser(null);
@@ -61,7 +57,7 @@ export const AuthProvider = ({ children }) => {
             console.log("🚪 Melde Benutzer ab...");
             await signOut({
                 global: true,
-                redirectTo: import.meta.env.VITE_LOGOUT_URI, // leitet zurück zur Startseite
+                redirectTo: import.meta.env.VITE_LOGOUT_URI,
             });
             setUser(null);
             setRoles([]);

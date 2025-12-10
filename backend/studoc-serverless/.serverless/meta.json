@@ -1,0 +1,678 @@
+{
+  "C:\\Users\\User\\IdeaProjects\\studoc_new\\backend\\studoc-serverless\\serverless.yml": {
+    "versionFramework": "4.27.1",
+    "servicePath": "C:\\Users\\User\\IdeaProjects\\studoc_new\\backend\\studoc-serverless\\serverless.yml",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "service": "studoc-groups-api",
+      "frameworkVersion": "3",
+      "useDotenv": true,
+      "custom": {
+        "stage": "dev",
+        "userPoolId": "us-east-1_djyDpSa8G",
+        "userPoolClientId": "1rdf9r0u75i0hnl6f4agnh0mug"
+      },
+      "provider": {
+        "name": "aws",
+        "runtime": "nodejs20.x",
+        "stage": "dev",
+        "region": "us-east-1",
+        "role": "arn:aws:iam::992382686388:role/LabRole",
+        "environment": {
+          "USER_POOL_ID": "us-east-1_djyDpSa8G",
+          "USER_POOL_CLIENT_ID": "1rdf9r0u75i0hnl6f4agnh0mug",
+          "MODULES_TABLE_NAME": "StuDoc-Modules_dev",
+          "FILES_TABLE_NAME": "StuDoc-Files_dev",
+          "USERS_TABLE_NAME": "StuDoc-Users_dev",
+          "GROUP_ACCESS_TABLE_NAME": "StuDoc-GroupAccess_dev",
+          "DEFAULT_ALLOWED_GROUPS": "Admins,Dozenten",
+          "DEFAULT_READONLY_GROUPS": "Studenten"
+        },
+        "httpApi": {
+          "cors": {
+            "allowedOrigins": [
+              "http://localhost:5173",
+              "https://studoc.ch",
+              "https://www.studoc.ch"
+            ],
+            "allowedHeaders": [
+              "Content-Type",
+              "Authorization",
+              "X-Amz-Date",
+              "X-Api-Key",
+              "X-Amz-Security-Token"
+            ],
+            "allowedMethods": [
+              "OPTIONS",
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE"
+            ],
+            "allowCredentials": "<REDACTED>"
+          },
+          "authorizers": {
+            "StuDocCognitoAuthorizer": {
+              "type": "jwt",
+              "identitySource": "$request.header.Authorization",
+              "issuerUrl": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_djyDpSa8G",
+              "audience": "1rdf9r0u75i0hnl6f4agnh0mug"
+            }
+          }
+        },
+        "versionFunctions": true,
+        "remoteFunctionData": {
+          "Configuration": {
+            "FunctionName": "studoc-groups-api-dev-deleteGroup",
+            "FunctionArn": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-deleteGroup",
+            "Runtime": "nodejs20.x",
+            "Role": "arn:aws:iam::992382686388:role/LabRole",
+            "Handler": "handlers/deleteGroup.handler",
+            "CodeSize": 61023,
+            "Description": "",
+            "Timeout": 6,
+            "MemorySize": 1024,
+            "LastModified": "2025-12-10T00:23:41.000+0000",
+            "CodeSha256": "rNguU3B+sNtOaHn1kpPsCNqbuIDmeO2pHx/l1+1a/F0=",
+            "Version": "$LATEST",
+            "VpcConfig": {
+              "SubnetIds": [],
+              "SecurityGroupIds": [],
+              "VpcId": "",
+              "Ipv6AllowedForDualStack": false
+            },
+            "Environment": {
+              "Variables": {
+                "DEFAULT_ALLOWED_GROUPS": "Admins,Dozenten",
+                "FILES_TABLE_NAME": "StuDoc-Files_dev",
+                "USERS_TABLE_NAME": "StuDoc-Users_dev",
+                "DEFAULT_READONLY_GROUPS": "Studenten",
+                "MODULES_TABLE_NAME": "StuDoc-Modules_dev",
+                "GROUP_ACCESS_TABLE_NAME": "StuDoc-GroupAccess_dev",
+                "USER_POOL_CLIENT_ID": "1rdf9r0u75i0hnl6f4agnh0mug",
+                "USER_POOL_ID": "us-east-1_djyDpSa8G"
+              }
+            },
+            "KMSKeyArn": null,
+            "TracingConfig": {
+              "Mode": "PassThrough"
+            },
+            "MasterArn": null,
+            "RevisionId": "a33b2318-b09b-48f7-a6b1-f9416a9dec60",
+            "State": "Active",
+            "StateReason": null,
+            "StateReasonCode": null,
+            "LastUpdateStatus": "Successful",
+            "LastUpdateStatusReason": null,
+            "LastUpdateStatusReasonCode": null,
+            "PackageType": "Zip",
+            "SigningProfileVersionArn": null,
+            "SigningJobArn": null,
+            "Architectures": [
+              "x86_64"
+            ],
+            "EphemeralStorage": {
+              "Size": 512
+            },
+            "SnapStart": {
+              "ApplyOn": "None",
+              "OptimizationStatus": "Off"
+            },
+            "RuntimeVersionConfig": {
+              "RuntimeVersionArn": "arn:aws:lambda:us-east-1::runtime:10a462e31cab25e158637e367add6f0cb2340955bd723a5304ec7834d6db399e"
+            },
+            "LoggingConfig": {
+              "LogFormat": "Text",
+              "ApplicationLogLevel": null,
+              "SystemLogLevel": null,
+              "LogGroup": "/aws/lambda/studoc-groups-api-dev-deleteGroup"
+            },
+            "Layers": []
+          },
+          "Code": {
+            "RepositoryType": "S3",
+            "Location": "https://prod-iad-c1-djusa-tasks.s3.us-east-1.amazonaws.com/snapshots/992382686388/studoc-groups-api-dev-deleteGroup-ec415e06-e09b-487d-9eff-abf991cc4f3d?versionId=VPQJJXfDGY81.aI9dayyn7NVJ6T6zkey&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEPn%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIA9JJfIAYuikq%2BVHkmzQ8G3gUROlOmx4n%2B7n57iYo2SWAiEAh%2FvZ1wpMV48IaygeYvpZ%2FmRRXAH67qck5XEamdf9dyAqlAIIwf%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARAEGgw0NzkyMzMwMjUzNzkiDJ7nMAtWwHy8rVGM3yroAWv1iKMnaGLaf1Q7RipeZo2jUzXRfavJw1up0lJ%2FnOW%2F%2FD1cBVGyG7h0%2BCfl2MXtVSdQ7kzJesart6vTkiBTEVaob1wdUnE1XLoM6KsU3%2FtysOdDkFAZy9vVmhMpupRdqRPRBXX0b%2F7LuNBaybCjPmyfAMAZPCG67fj%2BrU%2BjkRni4uskApaKms33mMC4bCFZxGbF%2B3EGTf%2BR5qwLCKNd4TbvPD6FJAHcu7QdZGXl%2BBgkliOaJTt2yoET3BIdCsFpAN2toArr9aT3oP%2FBUVD0D8dzKD7lNCkv2K53Cjtc7LPnWULGNKN7sF0wyZHhyQY6jQGPZOP7mdJHvyoJSRfFT%2BKdqTLosO3iv%2BPi%2BX6bjF%2BnRQbe9HTqTDmZfuKpP3IJJ704bzcJInJLHUqcL2j96eIRcq3fFwOKj7gcE1WPd3TeS9jwxniXfg7pNxy2RQ8Q7g5sAnIMxtAi4StCR44bYw%2Bk5iWBQacuJQiLu8aTHkYNpd25VR1IWv6yzJc68ps%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20251210T013341Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Credential=ASIAW7FEDUVRVXEMSYB4%2F20251210%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=3963ecd839ce4b5d4b6c9af8b22632da63a306d355c0be194ad2c2aaa2441935",
+            "ImageUri": null,
+            "ResolvedImageUri": null
+          },
+          "Tags": {
+            "aws:cloudformation:stack-name": "studoc-groups-api-dev",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:992382686388:stack/studoc-groups-api-dev/98c61ed0-d46d-11f0-afd8-122517db9c5d",
+            "STAGE": "dev",
+            "aws:cloudformation:logical-id": "DeleteGroupLambdaFunction"
+          }
+        }
+      },
+      "functions": {
+        "listModules": {
+          "handler": "handlers/listModules.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/modules",
+                "method": "get",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-listModules"
+        },
+        "createModule": {
+          "handler": "handlers/createModule.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/modules",
+                "method": "post",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-createModule"
+        },
+        "listModuleFiles": {
+          "handler": "handlers/listModuleFiles.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/modules/{moduleId}/files",
+                "method": "get",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-listModuleFiles"
+        },
+        "uploadFileToModule": {
+          "handler": "handlers/uploadFileToModule/index.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/modules/{moduleId}/files",
+                "method": "post",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-uploadFileToModule"
+        },
+        "listGroups": {
+          "handler": "handlers/listGroups.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/groups",
+                "method": "get",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-listGroups"
+        },
+        "createGroup": {
+          "handler": "handlers/createGroup.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/groups",
+                "method": "post",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-createGroup"
+        },
+        "deleteGroup": {
+          "handler": "handlers/deleteGroup.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/groups/{groupName}",
+                "method": "delete",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-deleteGroup"
+        },
+        "listGroupMembers": {
+          "handler": "handlers/listGroupMembers.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/groups/{groupName}/members",
+                "method": "get",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-listGroupMembers"
+        },
+        "addUserToGroup": {
+          "handler": "handlers/addUserToGroup.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/groups/{groupName}/members",
+                "method": "post",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-addUserToGroup"
+        },
+        "removeUserFromGroup": {
+          "handler": "handlers/removeUserFromGroup.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/groups/{groupName}/members/{username}",
+                "method": "delete",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-removeUserFromGroup"
+        },
+        "listAllUsers": {
+          "handler": "handlers/listAllUsers.handler",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/users",
+                "method": "get",
+                "authorizer": "StuDocCognitoAuthorizer"
+              }
+            }
+          ],
+          "name": "studoc-groups-api-dev-listAllUsers"
+        }
+      },
+      "resources": {
+        "Resources": {
+          "StuDocUploadsBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketName": "studoc-files-bucket",
+              "AccessControl": "Private",
+              "VersioningConfiguration": {
+                "Status": "Enabled"
+              }
+            }
+          },
+          "StuDocModulesTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "StuDoc-Modules_dev",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "moduleId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "moduleId",
+                  "KeyType": "HASH"
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST",
+              "SSESpecification": {
+                "SSEEnabled": true
+              }
+            }
+          },
+          "StuDocFilesTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "StuDoc-Files_dev",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "fileId",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "moduleId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "fileId",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "moduleId-index",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "moduleId",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST",
+              "SSESpecification": {
+                "SSEEnabled": true
+              }
+            }
+          },
+          "StuDocUsersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "StuDoc-Users_dev",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "userId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "userId",
+                  "KeyType": "HASH"
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST",
+              "SSESpecification": {
+                "SSEEnabled": true
+              }
+            }
+          },
+          "StuDocGroupAccessTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "StuDoc-GroupAccess_dev",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "groupName",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "moduleId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "groupName",
+                  "KeyType": "HASH"
+                },
+                {
+                  "AttributeName": "moduleId",
+                  "KeyType": "RANGE"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "moduleId-index",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "moduleId",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST",
+              "SSESpecification": {
+                "SSEEnabled": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs20.x",
+      "stage": "dev",
+      "region": "us-east-1",
+      "role": "arn:aws:iam::992382686388:role/LabRole",
+      "environment": {
+        "USER_POOL_ID": "us-east-1_djyDpSa8G",
+        "USER_POOL_CLIENT_ID": "1rdf9r0u75i0hnl6f4agnh0mug",
+        "MODULES_TABLE_NAME": "StuDoc-Modules_dev",
+        "FILES_TABLE_NAME": "StuDoc-Files_dev",
+        "USERS_TABLE_NAME": "StuDoc-Users_dev",
+        "GROUP_ACCESS_TABLE_NAME": "StuDoc-GroupAccess_dev",
+        "DEFAULT_ALLOWED_GROUPS": "Admins,Dozenten",
+        "DEFAULT_READONLY_GROUPS": "Studenten"
+      },
+      "httpApi": {
+        "cors": {
+          "allowedOrigins": [
+            "http://localhost:5173",
+            "https://studoc.ch",
+            "https://www.studoc.ch"
+          ],
+          "allowedHeaders": [
+            "Content-Type",
+            "Authorization",
+            "X-Amz-Date",
+            "X-Api-Key",
+            "X-Amz-Security-Token"
+          ],
+          "allowedMethods": [
+            "OPTIONS",
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE"
+          ],
+          "allowCredentials": "<REDACTED>"
+        },
+        "authorizers": {
+          "StuDocCognitoAuthorizer": {
+            "type": "jwt",
+            "identitySource": "$request.header.Authorization",
+            "issuerUrl": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_djyDpSa8G",
+            "audience": "1rdf9r0u75i0hnl6f4agnh0mug"
+          }
+        }
+      },
+      "versionFunctions": true,
+      "remoteFunctionData": {
+        "Configuration": {
+          "FunctionName": "studoc-groups-api-dev-deleteGroup",
+          "FunctionArn": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-deleteGroup",
+          "Runtime": "nodejs20.x",
+          "Role": "arn:aws:iam::992382686388:role/LabRole",
+          "Handler": "handlers/deleteGroup.handler",
+          "CodeSize": 61023,
+          "Description": "",
+          "Timeout": 6,
+          "MemorySize": 1024,
+          "LastModified": "2025-12-10T00:23:41.000+0000",
+          "CodeSha256": "rNguU3B+sNtOaHn1kpPsCNqbuIDmeO2pHx/l1+1a/F0=",
+          "Version": "$LATEST",
+          "VpcConfig": {
+            "SubnetIds": [],
+            "SecurityGroupIds": [],
+            "VpcId": "",
+            "Ipv6AllowedForDualStack": false
+          },
+          "Environment": {
+            "Variables": {
+              "DEFAULT_ALLOWED_GROUPS": "Admins,Dozenten",
+              "FILES_TABLE_NAME": "StuDoc-Files_dev",
+              "USERS_TABLE_NAME": "StuDoc-Users_dev",
+              "DEFAULT_READONLY_GROUPS": "Studenten",
+              "MODULES_TABLE_NAME": "StuDoc-Modules_dev",
+              "GROUP_ACCESS_TABLE_NAME": "StuDoc-GroupAccess_dev",
+              "USER_POOL_CLIENT_ID": "1rdf9r0u75i0hnl6f4agnh0mug",
+              "USER_POOL_ID": "us-east-1_djyDpSa8G"
+            }
+          },
+          "KMSKeyArn": null,
+          "TracingConfig": {
+            "Mode": "PassThrough"
+          },
+          "MasterArn": null,
+          "RevisionId": "a33b2318-b09b-48f7-a6b1-f9416a9dec60",
+          "State": "Active",
+          "StateReason": null,
+          "StateReasonCode": null,
+          "LastUpdateStatus": "Successful",
+          "LastUpdateStatusReason": null,
+          "LastUpdateStatusReasonCode": null,
+          "PackageType": "Zip",
+          "SigningProfileVersionArn": null,
+          "SigningJobArn": null,
+          "Architectures": [
+            "x86_64"
+          ],
+          "EphemeralStorage": {
+            "Size": 512
+          },
+          "SnapStart": {
+            "ApplyOn": "None",
+            "OptimizationStatus": "Off"
+          },
+          "RuntimeVersionConfig": {
+            "RuntimeVersionArn": "arn:aws:lambda:us-east-1::runtime:10a462e31cab25e158637e367add6f0cb2340955bd723a5304ec7834d6db399e"
+          },
+          "LoggingConfig": {
+            "LogFormat": "Text",
+            "ApplicationLogLevel": null,
+            "SystemLogLevel": null,
+            "LogGroup": "/aws/lambda/studoc-groups-api-dev-deleteGroup"
+          },
+          "Layers": []
+        },
+        "Code": {
+          "RepositoryType": "S3",
+          "Location": "https://prod-iad-c1-djusa-tasks.s3.us-east-1.amazonaws.com/snapshots/992382686388/studoc-groups-api-dev-deleteGroup-ec415e06-e09b-487d-9eff-abf991cc4f3d?versionId=VPQJJXfDGY81.aI9dayyn7NVJ6T6zkey&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEPn%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIA9JJfIAYuikq%2BVHkmzQ8G3gUROlOmx4n%2B7n57iYo2SWAiEAh%2FvZ1wpMV48IaygeYvpZ%2FmRRXAH67qck5XEamdf9dyAqlAIIwf%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARAEGgw0NzkyMzMwMjUzNzkiDJ7nMAtWwHy8rVGM3yroAWv1iKMnaGLaf1Q7RipeZo2jUzXRfavJw1up0lJ%2FnOW%2F%2FD1cBVGyG7h0%2BCfl2MXtVSdQ7kzJesart6vTkiBTEVaob1wdUnE1XLoM6KsU3%2FtysOdDkFAZy9vVmhMpupRdqRPRBXX0b%2F7LuNBaybCjPmyfAMAZPCG67fj%2BrU%2BjkRni4uskApaKms33mMC4bCFZxGbF%2B3EGTf%2BR5qwLCKNd4TbvPD6FJAHcu7QdZGXl%2BBgkliOaJTt2yoET3BIdCsFpAN2toArr9aT3oP%2FBUVD0D8dzKD7lNCkv2K53Cjtc7LPnWULGNKN7sF0wyZHhyQY6jQGPZOP7mdJHvyoJSRfFT%2BKdqTLosO3iv%2BPi%2BX6bjF%2BnRQbe9HTqTDmZfuKpP3IJJ704bzcJInJLHUqcL2j96eIRcq3fFwOKj7gcE1WPd3TeS9jwxniXfg7pNxy2RQ8Q7g5sAnIMxtAi4StCR44bYw%2Bk5iWBQacuJQiLu8aTHkYNpd25VR1IWv6yzJc68ps%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20251210T013341Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Credential=ASIAW7FEDUVRVXEMSYB4%2F20251210%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=3963ecd839ce4b5d4b6c9af8b22632da63a306d355c0be194ad2c2aaa2441935",
+          "ImageUri": null,
+          "ResolvedImageUri": null
+        },
+        "Tags": {
+          "aws:cloudformation:stack-name": "studoc-groups-api-dev",
+          "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:992382686388:stack/studoc-groups-api-dev/98c61ed0-d46d-11f0-afd8-122517db9c5d",
+          "STAGE": "dev",
+          "aws:cloudformation:logical-id": "DeleteGroupLambdaFunction"
+        }
+      }
+    },
+    "dashboard": {
+      "isEnabledForService": false,
+      "requiredAuthentication": false,
+      "orgFeaturesInUse": null,
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": null,
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "serviceRawFile": "service: studoc-groups-api\r\nframeworkVersion: 3\r\nuseDotenv: true\r\n\r\n# ----------------------------------------------------\r\n# ⚙️ Globale Konfiguration\r\n# ----------------------------------------------------\r\ncustom:\r\n  stage: ${opt:stage, 'dev'}\r\n  userPoolId: us-east-1_djyDpSa8G\r\n  userPoolClientId: 1rdf9r0u75i0hnl6f4agnh0mug\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: nodejs20.x\r\n  stage: ${self:custom.stage}\r\n  region: us-east-1\r\n  role: arn:aws:iam::992382686388:role/LabRole\r\n\r\n  # ------------------------------------------------\r\n  # 🌍 Environment Variablen (für Lambdas)\r\n  # ------------------------------------------------\r\n  environment:\r\n    USER_POOL_ID: ${self:custom.userPoolId}\r\n    USER_POOL_CLIENT_ID: ${self:custom.userPoolClientId}\r\n\r\n    MODULES_TABLE_NAME: StuDoc-Modules_${self:custom.stage}\r\n    FILES_TABLE_NAME: StuDoc-Files_${self:custom.stage}\r\n    USERS_TABLE_NAME: StuDoc-Users_${self:custom.stage}\r\n    GROUP_ACCESS_TABLE_NAME: StuDoc-GroupAccess_${self:custom.stage}\r\n\r\n    DEFAULT_ALLOWED_GROUPS: Admins,Dozenten\r\n    DEFAULT_READONLY_GROUPS: Studenten\r\n\r\n  # ------------------------------------------------\r\n  # 🔑 HTTP API + Cognito JWT Authorizer + CORS\r\n  # ------------------------------------------------\r\n  httpApi:\r\n    cors:\r\n      allowedOrigins:\r\n        - http://localhost:5173\r\n        - https://studoc.ch\r\n        - https://www.studoc.ch\r\n      allowedHeaders:\r\n        - Content-Type\r\n        - Authorization\r\n        - X-Amz-Date\r\n        - X-Api-Key\r\n        - X-Amz-Security-Token\r\n      allowedMethods:\r\n        - OPTIONS\r\n        - GET\r\n        - POST\r\n        - PUT\r\n        - DELETE\r\n      allowCredentials: false\r\n\r\n    authorizers:\r\n      StuDocCognitoAuthorizer:\r\n        type: jwt\r\n        identitySource: \"$request.header.Authorization\"\r\n        issuerUrl: https://cognito-idp.${self:provider.region}.amazonaws.com/${self:custom.userPoolId}\r\n        audience:\r\n          - ${self:custom.userPoolClientId}\r\n\r\n# ----------------------------------------------------\r\n# 💻 Lambda Funktionen (API Endpoints)\r\n# ----------------------------------------------------\r\nfunctions:\r\n  # ---------------- Modules ----------------\r\n  listModules:\r\n    handler: handlers/listModules.handler\r\n    events:\r\n      - httpApi:\r\n          path: /modules\r\n          method: get\r\n          authorizer: StuDocCognitoAuthorizer\r\n\r\n  createModule:\r\n    handler: handlers/createModule.handler\r\n    events:\r\n      - httpApi:\r\n          path: /modules\r\n          method: post\r\n          authorizer: StuDocCognitoAuthorizer\r\n\r\n  listModuleFiles:\r\n    handler: handlers/listModuleFiles.handler\r\n    events:\r\n      - httpApi:\r\n          path: /modules/{moduleId}/files\r\n          method: get\r\n          authorizer: StuDocCognitoAuthorizer\r\n\r\n  uploadFileToModule:\r\n    handler: handlers/uploadFileToModule/index.handler\r\n    events:\r\n      - httpApi:\r\n          path: /modules/{moduleId}/files\r\n          method: post\r\n          authorizer: StuDocCognitoAuthorizer\r\n      # Kein eigenes OPTIONS-Event nötig → handled by withCors()\r\n\r\n  # ---------------- Groups ----------------\r\n  listGroups:\r\n    handler: handlers/listGroups.handler\r\n    events:\r\n      - httpApi:\r\n          path: /groups\r\n          method: get\r\n          authorizer: StuDocCognitoAuthorizer\r\n\r\n  createGroup:\r\n    handler: handlers/createGroup.handler\r\n    events:\r\n      - httpApi:\r\n          path: /groups\r\n          method: post\r\n          authorizer: StuDocCognitoAuthorizer\r\n\r\n  deleteGroup:\r\n    handler: handlers/deleteGroup.handler\r\n    events:\r\n      - httpApi:\r\n          path: /groups/{groupName}\r\n          method: delete\r\n          authorizer: StuDocCognitoAuthorizer\r\n\r\n  listGroupMembers:\r\n    handler: handlers/listGroupMembers.handler\r\n    events:\r\n      - httpApi:\r\n          path: /groups/{groupName}/members\r\n          method: get\r\n          authorizer: StuDocCognitoAuthorizer\r\n\r\n  addUserToGroup:\r\n    handler: handlers/addUserToGroup.handler\r\n    events:\r\n      - httpApi:\r\n          path: /groups/{groupName}/members\r\n          method: post\r\n          authorizer: StuDocCognitoAuthorizer\r\n\r\n  removeUserFromGroup:\r\n    handler: handlers/removeUserFromGroup.handler\r\n    events:\r\n      - httpApi:\r\n          path: /groups/{groupName}/members/{username}\r\n          method: delete\r\n          authorizer: StuDocCognitoAuthorizer\r\n\r\n  # ---------------- Users ----------------\r\n  listAllUsers:\r\n    handler: handlers/listAllUsers.handler\r\n    events:\r\n      - httpApi:\r\n          path: /users\r\n          method: get\r\n          authorizer: StuDocCognitoAuthorizer\r\n\r\n# ----------------------------------------------------\r\n# 🗄️ DynamoDB Tabellen (automatisch erstellt)\r\n# ----------------------------------------------------\r\nresources:\r\n  Resources:\r\n    StuDocUploadsBucket:\r\n      Type: AWS::S3::Bucket\r\n      Properties:\r\n        BucketName: studoc-files-bucket\r\n        AccessControl: Private\r\n        VersioningConfiguration:\r\n          Status: Enabled\r\n    StuDocModulesTable:\r\n      Type: AWS::DynamoDB::Table\r\n      Properties:\r\n        TableName: StuDoc-Modules_${self:custom.stage}\r\n        AttributeDefinitions:\r\n          - AttributeName: moduleId\r\n            AttributeType: S\r\n        KeySchema:\r\n          - AttributeName: moduleId\r\n            KeyType: HASH\r\n        BillingMode: PAY_PER_REQUEST\r\n        SSESpecification:\r\n          SSEEnabled: true\r\n\r\n    StuDocFilesTable:\r\n      Type: AWS::DynamoDB::Table\r\n      Properties:\r\n        TableName: StuDoc-Files_${self:custom.stage}\r\n        AttributeDefinitions:\r\n          - AttributeName: fileId\r\n            AttributeType: S\r\n          - AttributeName: moduleId\r\n            AttributeType: S\r\n        KeySchema:\r\n          - AttributeName: fileId\r\n            KeyType: HASH\r\n        GlobalSecondaryIndexes:\r\n          - IndexName: moduleId-index\r\n            KeySchema:\r\n              - AttributeName: moduleId\r\n                KeyType: HASH\r\n            Projection:\r\n              ProjectionType: ALL\r\n        BillingMode: PAY_PER_REQUEST\r\n        SSESpecification:\r\n          SSEEnabled: true\r\n\r\n    StuDocUsersTable:\r\n      Type: AWS::DynamoDB::Table\r\n      Properties:\r\n        TableName: StuDoc-Users_${self:custom.stage}\r\n        AttributeDefinitions:\r\n          - AttributeName: userId\r\n            AttributeType: S\r\n        KeySchema:\r\n          - AttributeName: userId\r\n            KeyType: HASH\r\n        BillingMode: PAY_PER_REQUEST\r\n        SSESpecification:\r\n          SSEEnabled: true\r\n\r\n    StuDocGroupAccessTable:\r\n      Type: AWS::DynamoDB::Table\r\n      Properties:\r\n        TableName: StuDoc-GroupAccess_${self:custom.stage}\r\n        AttributeDefinitions:\r\n          - AttributeName: groupName\r\n            AttributeType: S\r\n          - AttributeName: moduleId\r\n            AttributeType: S\r\n        KeySchema:\r\n          - AttributeName: groupName\r\n            KeyType: HASH\r\n          - AttributeName: moduleId\r\n            KeyType: RANGE\r\n        GlobalSecondaryIndexes:\r\n          - IndexName: moduleId-index\r\n            KeySchema:\r\n              - AttributeName: moduleId\r\n                KeyType: HASH\r\n            Projection:\r\n              ProjectionType: ALL\r\n        BillingMode: PAY_PER_REQUEST\r\n        SSESpecification:\r\n          SSEEnabled: true\r\n",
+    "command": [
+      "deploy",
+      "function"
+    ],
+    "options": {
+      "function": "deleteGroup"
+    },
+    "orgId": "a3f6c3ee-6e64-4f81-94b8-f4986f5570a0",
+    "orgName": "josipskara",
+    "userId": "ck9dZnCkGp19Fz0pbg",
+    "userName": "josipskara",
+    "serviceProviderAwsAccountId": "992382686388",
+    "serviceProviderAwsCfStackName": "studoc-groups-api-dev",
+    "serviceProviderAwsCfStackId": "arn:aws:cloudformation:us-east-1:992382686388:stack/studoc-groups-api-dev/98c61ed0-d46d-11f0-afd8-122517db9c5d",
+    "serviceProviderAwsCfStackCreated": "2025-12-08T19:39:23.042Z",
+    "serviceProviderAwsCfStackUpdated": "2025-12-10T00:23:34.390Z",
+    "serviceProviderAwsCfStackStatus": "UPDATE_COMPLETE",
+    "serviceProviderAwsCfStackOutputs": [
+      {
+        "OutputKey": "ListModulesLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-listModules:14",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-ListModulesLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "CreateModuleLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-createModule:8",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-CreateModuleLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "ListModuleFilesLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-listModuleFiles:8",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-ListModuleFilesLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "AddUserToGroupLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-addUserToGroup:15",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-AddUserToGroupLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "CreateGroupLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-createGroup:15",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-CreateGroupLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "HttpApiId",
+        "OutputValue": "vbkh5c3abb",
+        "Description": "Id of the HTTP API",
+        "ExportName": "sls-studoc-groups-api-dev-HttpApiId"
+      },
+      {
+        "OutputKey": "ListGroupMembersLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-listGroupMembers:15",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-ListGroupMembersLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "UploadFileToModuleLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-uploadFileToModule:9",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-UploadFileToModuleLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "ServerlessDeploymentBucketName",
+        "OutputValue": "serverless-framework-deployments-us-east-1-af2897ae-5e7f",
+        "ExportName": "sls-studoc-groups-api-dev-ServerlessDeploymentBucketName"
+      },
+      {
+        "OutputKey": "HttpApiUrl",
+        "OutputValue": "https://vbkh5c3abb.execute-api.us-east-1.amazonaws.com",
+        "Description": "URL of the HTTP API",
+        "ExportName": "sls-studoc-groups-api-dev-HttpApiUrl"
+      },
+      {
+        "OutputKey": "ListGroupsLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-listGroups:15",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-ListGroupsLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "ListAllUsersLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-listAllUsers:15",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-ListAllUsersLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "RemoveUserFromGroupLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-removeUserFromGroup:15",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-RemoveUserFromGroupLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "DeleteGroupLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:992382686388:function:studoc-groups-api-dev-deleteGroup:15",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-studoc-groups-api-dev-DeleteGroupLambdaFunctionQualifiedArn"
+      }
+    ]
+  }
+}

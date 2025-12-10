@@ -1,0 +1,248 @@
+service: studoc-groups-api
+frameworkVersion: 3
+useDotenv: true
+
+# ----------------------------------------------------
+# ⚙️ Globale Konfiguration
+# ----------------------------------------------------
+custom:
+  stage: ${opt:stage, 'dev'}
+  userPoolId: us-east-1_djyDpSa8G
+  userPoolClientId: 1rdf9r0u75i0hnl6f4agnh0mug
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: ${self:custom.stage}
+  region: us-east-1
+  role: arn:aws:iam::992382686388:role/LabRole
+
+  # ------------------------------------------------
+  # 🌍 Environment Variablen (für Lambdas)
+  # ------------------------------------------------
+  environment:
+    USER_POOL_ID: ${self:custom.userPoolId}
+    USER_POOL_CLIENT_ID: ${self:custom.userPoolClientId}
+
+    MODULES_TABLE_NAME: StuDoc-Modules_${self:custom.stage}
+    FILES_TABLE_NAME: StuDoc-Files_${self:custom.stage}
+    USERS_TABLE_NAME: StuDoc-Users_${self:custom.stage}
+    GROUP_ACCESS_TABLE_NAME: StuDoc-GroupAccess_${self:custom.stage}
+
+    DEFAULT_ALLOWED_GROUPS: Admins,Dozenten
+    DEFAULT_READONLY_GROUPS: Studenten
+
+  # ------------------------------------------------
+  # 🔑 HTTP API + Cognito JWT Authorizer + CORS
+  # ------------------------------------------------
+  httpApi:
+    cors:
+      allowedOrigins:
+        - http://localhost:5173
+        - https://studoc.ch
+        - https://www.studoc.ch
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+        - X-Amz-Date
+        - X-Api-Key
+        - X-Amz-Security-Token
+      allowedMethods:
+        - OPTIONS
+        - GET
+        - POST
+        - PUT
+        - DELETE
+      allowCredentials: false
+
+    authorizers:
+      StuDocCognitoAuthorizer:
+        type: jwt
+        identitySource: "$request.header.Authorization"
+        issuerUrl: https://cognito-idp.${self:provider.region}.amazonaws.com/${self:custom.userPoolId}
+        audience:
+          - ${self:custom.userPoolClientId}
+
+# ----------------------------------------------------
+# 💻 Lambda Funktionen (API Endpoints)
+# ----------------------------------------------------
+functions:
+  # ---------------- Modules ----------------
+  listModules:
+    handler: handlers/listModules.handler
+    events:
+      - httpApi:
+          path: /modules
+          method: get
+          authorizer: StuDocCognitoAuthorizer
+
+  createModule:
+    handler: handlers/createModule.handler
+    events:
+      - httpApi:
+          path: /modules
+          method: post
+          authorizer: StuDocCognitoAuthorizer
+
+  listModuleFiles:
+    handler: handlers/listModuleFiles.handler
+    events:
+      - httpApi:
+          path: /modules/{moduleId}/files
+          method: get
+          authorizer: StuDocCognitoAuthorizer
+
+  uploadFileToModule:
+    handler: handlers/uploadFileToModule/index.handler
+    events:
+      - httpApi:
+          path: /modules/{moduleId}/files
+          method: post
+          authorizer: StuDocCognitoAuthorizer
+      # Kein eigenes OPTIONS-Event nötig → handled by withCors()
+
+  # ---------------- Groups ----------------
+  listGroups:
+    handler: handlers/listGroups.handler
+    events:
+      - httpApi:
+          path: /groups
+          method: get
+          authorizer: StuDocCognitoAuthorizer
+
+  createGroup:
+    handler: handlers/createGroup.handler
+    events:
+      - httpApi:
+          path: /groups
+          method: post
+          authorizer: StuDocCognitoAuthorizer
+
+  deleteGroup:
+    handler: handlers/deleteGroup.handler
+    events:
+      - httpApi:
+          path: /groups/{groupName}
+          method: delete
+          authorizer: StuDocCognitoAuthorizer
+
+  listGroupMembers:
+    handler: handlers/listGroupMembers.handler
+    events:
+      - httpApi:
+          path: /groups/{groupName}/members
+          method: get
+          authorizer: StuDocCognitoAuthorizer
+
+  addUserToGroup:
+    handler: handlers/addUserToGroup.handler
+    events:
+      - httpApi:
+          path: /groups/{groupName}/members
+          method: post
+          authorizer: StuDocCognitoAuthorizer
+
+  removeUserFromGroup:
+    handler: handlers/removeUserFromGroup.handler
+    events:
+      - httpApi:
+          path: /groups/{groupName}/members/{username}
+          method: delete
+          authorizer: StuDocCognitoAuthorizer
+
+  # ---------------- Users ----------------
+  listAllUsers:
+    handler: handlers/listAllUsers.handler
+    events:
+      - httpApi:
+          path: /users
+          method: get
+          authorizer: StuDocCognitoAuthorizer
+
+# ----------------------------------------------------
+# 🗄️ DynamoDB Tabellen (automatisch erstellt)
+# ----------------------------------------------------
+resources:
+  Resources:
+    StuDocUploadsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: studoc-files-bucket
+        AccessControl: Private
+        VersioningConfiguration:
+          Status: Enabled
+    StuDocModulesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: StuDoc-Modules_${self:custom.stage}
+        AttributeDefinitions:
+          - AttributeName: moduleId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: moduleId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        SSESpecification:
+          SSEEnabled: true
+
+    StuDocFilesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: StuDoc-Files_${self:custom.stage}
+        AttributeDefinitions:
+          - AttributeName: fileId
+            AttributeType: S
+          - AttributeName: moduleId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: fileId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: moduleId-index
+            KeySchema:
+              - AttributeName: moduleId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+        SSESpecification:
+          SSEEnabled: true
+
+    StuDocUsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: StuDoc-Users_${self:custom.stage}
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        SSESpecification:
+          SSEEnabled: true
+
+    StuDocGroupAccessTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: StuDoc-GroupAccess_${self:custom.stage}
+        AttributeDefinitions:
+          - AttributeName: groupName
+            AttributeType: S
+          - AttributeName: moduleId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: groupName
+            KeyType: HASH
+          - AttributeName: moduleId
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: moduleId-index
+            KeySchema:
+              - AttributeName: moduleId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+        SSESpecification:
+          SSEEnabled: true

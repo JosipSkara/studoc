@@ -1,96 +1,91 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: Simple Amazon Cognito Stack (User Pool + App Client + Domain)
+service: studoc-groups-api
 
-Parameters:
-  UserPoolName:
-    Type: String
-    Default: SimpleCognitoUserPool
-    Description: Name of the Cognito User Pool
+frameworkVersion: 3
 
-  CognitoDomainPrefix:
-    Type: String
-    Default: mydemoapp
-    Description: Unique prefix for Cognito hosted domain (must be globally unique)
+# ----------------------------------------------------
+# ⚙️ Globale Konfiguration
+# ----------------------------------------------------
+custom:
+  userPoolId: us-east-1_djyDpSa8G
+  userPoolClientId: your-cognito-app-client-id # 👈 trage hier deine tatsächliche App Client ID aus Cognito ein
 
-Resources:
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: dev
+  region: us-east-1
 
-  ##############################################
-  # USER POOL
-  ##############################################
+  # IAM-Rolle, um CreateRole-Fehler zu vermeiden
+  role: arn:aws:iam::992382686388:role/LabRole
 
-  CognitoUserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      UserPoolName: !Ref UserPoolName
-      AutoVerifiedAttributes:
-        - email
-      UsernameAttributes:
-        - email
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-          RequireUppercase: true
-          RequireLowercase: true
-          RequireNumbers: true
-          RequireSymbols: false
-      AccountRecoverySetting:
-        RecoveryMechanisms:
-          - Name: verified_email
-            Priority: 1
-      Schema:
-        - Name: email
-          Required: true
-          Mutable: false
+  # ------------------------------------------------
+  # 🔑 HTTP API + Cognito JWT Authorizer
+  # ------------------------------------------------
+  httpApi:
+    authorizers:
+      StuDocCognitoAuthorizer:
+        type: jwt
+        identitySource: "$request.header.Authorization"
+        issuerUrl: https://cognito-idp.${self:provider.region}.amazonaws.com/${self:custom.userPoolId}
+        audience:
+          - ${self:custom.userPoolClientId}
 
-  ##############################################
-  # APP CLIENT (Frontend / API)
-  ##############################################
+# ----------------------------------------------------
+# 💻 Funktionen (Endpoints)
+# ----------------------------------------------------
+functions:
+  listGroups:
+    handler: handler.listGroups
+    events:
+      - httpApi:
+          path: /groups
+          method: get
+          authorizer: StuDocCognitoAuthorizer
 
-  CognitoUserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      ClientName: simple-app-client
-      UserPoolId: !Ref CognitoUserPool
-      GenerateSecret: false
-      ExplicitAuthFlows:
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
-        - ALLOW_USER_PASSWORD_AUTH
-      PreventUserExistenceErrors: ENABLED
-      SupportedIdentityProviders:
-        - COGNITO
-      CallbackURLs:
-        - http://localhost:5173/callback
-      LogoutURLs:
-        - http://localhost:5173/logout
-      AllowedOAuthFlows:
-        - code
-      AllowedOAuthScopes:
-        - email
-        - openid
-        - profile
-      AllowedOAuthFlowsUserPoolClient: true
+  createGroup:
+    handler: handler.createGroup
+    events:
+      - httpApi:
+          path: /groups
+          method: post
+          authorizer: StuDocCognitoAuthorizer
 
-  ##############################################
-  # DOMAIN (Hosted UI)
-  ##############################################
+  deleteGroup:
+    handler: handler.deleteGroup
+    events:
+      - httpApi:
+          path: /groups/{groupName}
+          method: delete
+          authorizer: StuDocCognitoAuthorizer
 
-  CognitoUserPoolDomain:
-    Type: AWS::Cognito::UserPoolDomain
-    Properties:
-      Domain: !Ref CognitoDomainPrefix
-      UserPoolId: !Ref CognitoUserPool
+  listAllUsers:
+    handler: handler.listAllUsers
+    events:
+      - httpApi:
+          path: /users
+          method: get
+          authorizer: StuDocCognitoAuthorizer
 
-Outputs:
+  listGroupMembers:
+    handler: handler.listGroupMembers
+    events:
+      - httpApi:
+          path: /groups/{groupName}/members
+          method: get
+          authorizer: StuDocCognitoAuthorizer
 
-  UserPoolId:
-    Description: Cognito User Pool ID
-    Value: !Ref CognitoUserPool
+  addUserToGroup:
+    handler: handler.addUserToGroup
+    events:
+      - httpApi:
+          path: /groups/{groupName}/members
+          method: post
+          authorizer: StuDocCognitoAuthorizer
 
-  UserPoolClientId:
-    Description: Cognito User Pool Client ID
-    Value: !Ref CognitoUserPoolClient
-
-  CognitoHostedUI:
-    Description: Hosted UI URL for Cognito Login
-    Value: !Sub "https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/login?client_id=${CognitoUserPoolClient}&response_type=code&scope=email+openid+profile&redirect_uri=http://localhost:5173/callback"
+  removeUserFromGroup:
+    handler: handler.removeUserFromGroup
+    events:
+      - httpApi:
+          path: /groups/{groupName}/members/{username}
+          method: delete
+          authorizer: StuDocCognitoAuthorizer

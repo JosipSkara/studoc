@@ -148,4 +148,4 @@ exports.handler = async (event) => {
             body: JSON.stringify({ error: "Fehler beim Dateiupload.", details: err.message }),
         };
     }
-};
+};ich
