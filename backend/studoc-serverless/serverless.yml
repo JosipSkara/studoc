@@ -15,7 +15,7 @@ provider:
   runtime: nodejs20.x
   stage: ${self:custom.stage}
   region: us-east-1
-  role: arn:aws:iam::992382686388:role/LabRole
+  role: arn:aws:iam::992382686388:role/LabRole # ⚠️ LabRole muss alle DynamoDB-Berechtigungen haben!
 
   # ------------------------------------------------
   # 🌍 Environment Variablen (für Lambdas)
@@ -67,6 +67,31 @@ provider:
 # 💻 Lambda Funktionen (API Endpoints)
 # ----------------------------------------------------
 functions:
+  # ---------------- ModuleUser --------------
+  listModuleUsers:
+    handler: handlers/listModuleUsers.handler
+    events:
+      - httpApi:
+          path: /modules/{id}/users
+          method: GET
+          authorizer: StuDocCognitoAuthorizer # Wichtig: Autorisierung aktivieren
+
+  addModuleUser: # Korrigierte Einrückung
+    handler: handlers/addModuleUser.handler
+    events:
+      - httpApi:
+          path: /modules/{id}/users
+          method: POST
+          authorizer: StuDocCognitoAuthorizer
+
+  removeModuleUser: # Korrigierte Einrückung und Handler-Name auf das wahrscheinliche removeUserFromModule
+    handler: handlers/removeUserFromModule.handler
+    events:
+      - httpApi:
+          path: /modules/{id}/users/{username}
+          method: DELETE
+          authorizer: StuDocCognitoAuthorizer
+
   # ---------------- Modules ----------------
   listModules:
     handler: handlers/listModules.handler
@@ -83,6 +108,16 @@ functions:
           path: /modules
           method: post
           authorizer: StuDocCognitoAuthorizer
+
+  deleteModule:
+    handler: handlers/deleteModule.handler
+    events:
+      - httpApi:
+          path: /modules/{id}
+          method: delete
+          authorizer: StuDocCognitoAuthorizer
+    environment:
+      MODULES_TABLE: studoc-modules # ⚠️ Dies sollte MODULES_TABLE_NAME sein, aber Sie nutzen oben schon die richtige Variable
 
   listModuleFiles:
     handler: handlers/listModuleFiles.handler
@@ -155,7 +190,7 @@ functions:
     handler: handlers/listAllUsers.handler
     events:
       - httpApi:
-          path: /users
+          path: /users/all
           method: get
           authorizer: StuDocCognitoAuthorizer
 
@@ -171,6 +206,7 @@ resources:
         AccessControl: Private
         VersioningConfiguration:
           Status: Enabled
+
     StuDocModulesTable:
       Type: AWS::DynamoDB::Table
       Properties:

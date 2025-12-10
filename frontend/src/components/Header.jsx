@@ -1,19 +1,34 @@
+// src/components/Header.jsx
+
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { signOut } from "aws-amplify/auth";
+// ❌ Import von signOut ist hier NICHT MEHR NÖTIG, da wir die Context-Funktion verwenden!
+// import { signOut } from "aws-amplify/auth";
 
 export default function Header() {
-    const { user } = useAuth();
+    // 🆕 'user', 'roles' und die Context-Funktion 'logout' aus useAuth() extrahieren
+    const { user, roles, logout } = useAuth();
     const navigate = useNavigate();
 
-    if (!user) return null; // Header nur anzeigen, wenn eingeloggt
+    // Zeige den Header nur, wenn ein Benutzer eingeloggt ist
+    if (!user) return null;
 
+    // Definiere, wer den Tab "Zugriffskontrolle" sehen darf
+    const isElevatedUser =
+        (roles?.includes("admin") || roles?.includes("Admin") || roles?.includes("dozenten") || roles?.includes("Dozenten"));
+
+    // 🟢 KORRIGIERTE LOGOUT-FUNKTION
     const handleLogout = async () => {
         try {
-            await signOut();
-            navigate("/"); // zurück zur Login-Seite
+            // Ruft die Context-Funktion auf, die den Cognito-Logout triggert
+            await logout();
+
+            // 🟢 KORREKTUR: Direkt zur Login-Seite navigieren, damit der Login-Button erscheint
+            navigate("/login");
         } catch (error) {
             console.error("Logout fehlgeschlagen:", error);
+            // Auch bei Fehler zur Login-Seite navigieren, um hängenden Zustand zu vermeiden
+            navigate("/login");
         }
     };
 
@@ -28,6 +43,17 @@ export default function Header() {
                     <Link to="/home" className="hover:text-blue-400 transition">Home</Link>
                     <Link to="/documents" className="hover:text-blue-400 transition">Documents</Link>
                     <Link to="/groups" className="hover:text-blue-400 transition">Groups</Link>
+
+                    {/* 👥 Link für Administratoren/Dozenten */}
+                    {isElevatedUser && (
+                        <Link
+                            to="/access"
+                            className="hover:text-blue-400 transition font-bold"
+                        >
+                            Zugriffskontrolle
+                        </Link>
+                    )}
+
                     <Link to="/profile" className="hover:text-blue-400 transition">Profile</Link>
                 </nav>
 

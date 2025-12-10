@@ -8,6 +8,8 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [roles, setRoles] = useState([]); // ✅ Normalisierte Rollen (z. B. ["admins"])
     const [attributes, setAttributes] = useState({});
+
+    // 🟢 SYNTAX KORRIGIERT: Muss useState(true) verwenden
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -25,7 +27,9 @@ export const AuthProvider = ({ children }) => {
 
                 // 🔹 Gruppen auslesen & in Kleinbuchstaben umwandeln
                 const groupsRaw = payload["cognito:groups"] ?? [];
-                const normalizedGroups = groupsRaw.map((g) => g.toLowerCase());
+                const normalizedGroups = Array.isArray(groupsRaw)
+                    ? groupsRaw.map((g) => g.toLowerCase())
+                    : [];
                 setRoles(normalizedGroups);
 
                 // Benutzerattribute setzen
@@ -55,14 +59,21 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             console.log("🚪 Melde Benutzer ab...");
+
+            // 🟢 LOGIK KORRIGIERT: Entferne den problematischen 'redirectTo' Parameter,
+            // da dies zu dem Fehler "Required String parameter 'redirect_uri' is not present" führt.
             await signOut({
                 global: true,
-                redirectTo: import.meta.env.VITE_LOGOUT_URI,
             });
+
+            // Setze den lokalen State nach erfolgreichem Cognito-Logout zurück
             setUser(null);
             setRoles([]);
         } catch (error) {
             console.error("❌ Fehler beim Logout:", error);
+            // Setze den State auch bei einem Fehler zurück, um Hängenbleiben zu verhindern
+            setUser(null);
+            setRoles([]);
         }
     };
 

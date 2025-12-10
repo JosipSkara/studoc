@@ -1,4 +1,4 @@
-// src/services/apiService.js (NEUE DATEI)
+// src/services/apiService.js
 
 import { fetchAuthSession } from "aws-amplify/auth";
 
@@ -32,7 +32,7 @@ export const fetchProtected = async (path, options = {}) => {
         const data = await response.json();
 
         if (!response.ok) {
-            // Wirft den Fehler der API (z.B. 403 Forbidden)
+            // Wirft den Fehler der API (z.B. 403 Forbidden oder Backend 500 mit JSON-Body)
             throw new Error(data.message || data.error || `API Fehler: ${response.status}`);
         }
 
@@ -46,7 +46,12 @@ export const fetchProtected = async (path, options = {}) => {
 // --------------- SPEZIFISCHE API FUNKTIONEN ---------------
 
 export const apiListGroups = () => fetchProtected("groups");
-export const apiFetchAllUsers = () => fetchProtected("users");
+
+// 🟢 KORRIGIERT: Verwendet den korrekten Backend-Pfad "/users/all"
+export const apiFetchAllUsers = () => fetchProtected("users/all");
+// ⚠️ Hinweis: apiListAllUsers ist jetzt redundant, aber ich behalte sie bei, falls sie irgendwo verwendet wird.
+export const apiListAllUsers = () => fetchProtected("users/all");
+
 export const apiFetchMembers = (groupName) => fetchProtected(`groups/${groupName}/members`);
 export const apiCreateGroup = (name) => fetchProtected("groups", {
     method: "POST",
@@ -64,6 +69,7 @@ export const apiRemoveUser = (groupName, username) => fetchProtected(`groups/${g
 export const apiDeleteGroup = (groupName) => fetchProtected(`groups/${groupName}`, {
     method: "DELETE",
 });
+
 // --------------- MODULES API ---------------
 
 /** 📋 Alle Module abrufen (GET /modules) */
@@ -76,3 +82,31 @@ export const apiCreateModule = (name, description = "") =>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description }),
     });
+
+// --------------- MODULES ACCESS API ---------------
+
+/** 👥 Benutzer eines Moduls abrufen (GET /modules/{id}/users) */
+export const apiListModuleUsers = (moduleId) =>
+    fetchProtected(`modules/${moduleId}/users`);
+
+/** ➕ Benutzer zu Modul hinzufügen (POST /modules/{id}/users) */
+export const apiAddUserToModule = (moduleId, username) =>
+    fetchProtected(`modules/${moduleId}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+    });
+
+/** ❌ Benutzer von Modul entfernen (DELETE /modules/{id}/users/{username}) */
+export const apiRemoveUserFromModule = (moduleId, username) =>
+    fetchProtected(`modules/${moduleId}/users/${username}`, {
+        method: "DELETE",
+    });
+
+export const apiDeleteModule = (moduleName) =>
+    fetchProtected(`modules/${moduleName}`, {
+        method: "DELETE",
+    });
+
+// ⚠️ Hinweis: apiListAllUsers und apiFetchAllUsers sind nun identisch.
+// Wenn Sie die App mit dieser Datei neu starten, sollte der 404/CORS-Fehler behoben sein.

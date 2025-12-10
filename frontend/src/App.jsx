@@ -7,6 +7,10 @@ import Documents from "./pages/Documents.jsx";
 import Groups from "./pages/Groups.jsx";
 import Profile from "./pages/Profile.jsx";
 import Files from "./components/Files.jsx";
+import ModuleUserManagement from "./pages/ModuleUserManagement.jsx"; // 🆕 Import
+// Import der neuen Seite:
+import AccessControl from "./components/AccessControl.jsx"; // 🆕 Importieren Sie die neue Seite
+
 export default function App() {
     return (
         <>
@@ -16,16 +20,19 @@ export default function App() {
                 <Route path="/" element={<Login />} />
                 <Route path="/callback" element={<Callback />} />
 
-                {/* Geschützte Routen (nur sichtbar, wenn eingeloggt) */}
+                {/* Geschützte Routen */}
                 <Route path="/home" element={<Home />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/groups" element={<Groups />} />
                 <Route path="/profile" element={<Profile />} />
 
-                {/* 🟢 NEUE ROUTE FÜR DATEI-ANSICHT */}
+                {/* 🟢 ROUTE FÜR DATEI-ANSICHT */}
                 <Route path="/files/:moduleId" element={<Files />} />
 
-                {/* Fallback: falls Route nicht existiert */}
+                {/* 👥 NEUE HAUPT-ROUTE FÜR ZUGRIFFSKONTROLLE */}
+                <Route path="/access" element={<AccessControl />} /> // 🆕 NEUER TAB
+
+                {/* Fallback */}
                 <Route path="*" element={<Home />} />
             </Routes>
         </>
