@@ -11,6 +11,6 @@ export default defineConfig({
     build: {
         // Deaktiviert Source Maps für den endgültigen Produktions-Build
         // (Gut für saubere Konsolen, schlecht fürs Debuggen in der Produktion)
-        sourcemap: false,
+                sourcemap: "hidden",
     },
 });

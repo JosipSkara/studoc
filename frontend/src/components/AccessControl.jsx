@@ -1,8 +1,8 @@
-// src/pages/AccessControl.jsx
+// src/components/AccessControl.jsx
 
 import React, { useState, useEffect } from 'react';
 import { apiListModules } from '../services/apiService';
-import ModuleUserManagement from '../pages/ModuleUserManagement'; // ⚠️ Korrigierter Pfad (angenommen, die Komponente liegt in 'components')
+import ModuleUserManagement from '../components/ModuleUserManagement'; // ⚠️ Korrigierter Pfad (angenommen, die Komponente liegt in 'components')
 import { Loader2, Box, CheckCircle } from 'lucide-react';
 
 function AccessControl() {
@@ -19,7 +19,7 @@ function AccessControl() {
                 setModules(data.sort((a, b) => a.name.localeCompare(b.name)));
             } catch (err) {
                 // Hier fangen wir Fehler ab, falls apiListModules fehlschlägt (z.B. 403)
-                setError("Fehler beim Laden der Module. Bitte Berechtigungen prüfen.");
+                                setError(`Fehler beim Laden der Module: ${err?.message || err}.` + (err?.response?.status ? ` (Status: ${err.response.status})` : "") + " Bitte Berechtigungen prüfen.");
                 console.error("❌ Fehler beim Abrufen der Modulliste:", err);
             } finally {
                 setLoading(false);
